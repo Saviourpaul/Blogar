@@ -1,6 +1,8 @@
 
-<?php  require 'includes/header.php';
+<?php $pageTitle = 'Dashboard';
+  require 'includes/header.php';
 require_once  'includes/helpers.php';
+
 
      
 
@@ -19,38 +21,7 @@ $totalPosts = getCount('posts', $connection);
 
 ?>
 
-<!DOCTYPE html>
-<html lang="en">
 
-<head>
-
-    <meta charset="utf-8">
-    <title>Dashboard </title>
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-    <meta content="Admin & Dashboard Template" name="description">
-    <meta content="Codebucks" name="author">
-    
-    <!-- layout setup -->
-    <!-- <script type="module" src="assets/js/layout-setup.js"></script> -->
-    
-    <!-- App favicon -->
-    <link rel="shortcut icon" href="assets/images/logo-sm.png">
-      <!-- select2 -->
-    <link href="assets/libs/select2/css/select2.min.css" rel="stylesheet" type="text/css">
-
-    <!-- Simplebar Css -->
-    <link rel="stylesheet" href="assets/libs/simplebar/simplebar.min.css">
-    
-    <!-- Bootstrap Css -->
-    <link href="assets/css/bootstrap.min.css" id="bootstrap-style" rel="stylesheet" type="text/css">
-    
-    <!--icons css-->
-    <link href="assets/css/icons.min.css" rel="stylesheet" type="text/css">
-    
-    <!-- App Css-->
-    <link href="assets/css/app.min.css" id="app-style" rel="stylesheet" type="text/css">
-
-</head>
 
 <body>
 <!-- Begin page -->
@@ -350,25 +321,8 @@ $totalPosts = getCount('posts', $connection);
             </div><!-- container-fluid -->
         </div><!-- End Page-content -->
 
-        <!-- Begin Footer -->
-        <footer class="footer">
-            <div class="container-fluid">
-                <div class="row align-items-center">
-                    <div class="col-sm-6">
-                        <script>document.write(new Date().getFullYear())</script> © Aquiry.
-                    </div>
-                    <div class="col-sm-6">
-                        <div class="text-sm-end d-none d-sm-block">
-                            Crafted with <i class="mdi mdi-heart text-danger"></i> by <a href="http://codebucks.in/" target="_blank" class="text-muted">Codebucks</a>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </footer>
-        <!-- END Footer -->
-        <!-- Begin scroll top -->
-         
-        <!-- END scroll top -->
+    <?php include 'includes/footer.php' ?> 
+
     </div><!-- end main content-->
 
 </div>

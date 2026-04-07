@@ -28,9 +28,6 @@ switch ($page) {
         include 'public/contact.php';
         break;
 
-   
-
-
 
 
     default:

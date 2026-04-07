@@ -1,37 +1,95 @@
 <?php
- 
 
+include 'config/database.php';
 
-require 'config/database.php';
-
-
-if (isset($_SESSION['user-id'])) {
-
-    $stmt = $connection->prepare("
-        SELECT firstname, lastname, email, avatar
-        FROM users
-        WHERE id = ?
-    ");
-
-
-    $stmt->bind_param("i", $_SESSION['user-id']);
-    $stmt->execute();
-
-    $result = $stmt->get_result();
-    $user = $result->fetch_assoc();
-}
 if (!isset($_SESSION['user-id'])) {
-
     $_SESSION['alert'] = [
         "type" => "warning",
         "message" => "You have to login first"
     ];
+    header("Location: signin.php");
+    exit();
+}
 
-    header("Location: signin");
-    exit;
+// Fetch logged-in user
+$loggedInId = $_SESSION['user-id'];
+
+$stmt = $connection->prepare("
+    SELECT id, firstname, lastname, email, avatar, is_admin
+    FROM users
+    WHERE id = ?
+");
+$stmt->bind_param("i", $loggedInId);
+$stmt->execute();
+$result = $stmt->get_result();
+$user = $result->fetch_assoc();
+
+if (!$user) {
+    
+    session_destroy();
+    header("Location: signin.php");
+    exit();
+}
+function getRelativeTime($datetime) {
+    date_default_timezone_set('Africa/Lagos'); // Force local timezone
+    
+    $now = new DateTime();
+    $ago = new DateTime($datetime);
+    $diff = $now->diff($ago);
+
+    $seconds = $now->getTimestamp() - $ago->getTimestamp();
+
+    if ($seconds < 60) {
+        return "Just now";
+    }
+
+    if ($diff->y > 0) return $diff->y . " year" . ($diff->y > 1 ? "s" : "") . " ago";
+    if ($diff->m > 0) return $diff->m . " month" . ($diff->m > 1 ? "s" : "") . " ago";
+    if ($diff->d > 0) return ($diff->d == 1) ? "Yesterday" : $diff->d . " days ago";
+    if ($diff->h > 0) return $diff->h . " hour" . ($diff->h > 1 ? "s" : "") . " ago";
+    if ($diff->i > 0) return $diff->i . " minute" . ($diff->i > 1 ? "s" : "") . " ago";
+    
+    return "Just now";
 }
 
 ?>
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+
+    <meta charset="utf-8">
+    <title><?= isset($pageTitle) ? htmlspecialchars($pageTitle) : 'Default Title' ?></title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <meta content="Admin & Dashboard Template" name="description">
+    <meta content="Codebucks" name="author">
+    
+    <!-- layout setup -->
+    <!-- <script type="module" src="assets/js/layout-setup.js"></script> -->
+    
+    <!-- App favicon -->
+    <link rel="shortcut icon" href="assets/images/logo-sm.png">
+      <!-- select2 -->
+    <link href="assets/libs/select2/css/select2.min.css" rel="stylesheet" type="text/css">
+     <!-- slick-carousel css -->
+    <link rel="stylesheet" href="assets/libs/slick-carousel/slick/slick-theme.css">
+    <link rel="stylesheet" href="assets/libs/slick-carousel/slick/slick.css">
+
+
+    <!-- Simplebar Css -->
+    <link rel="stylesheet" href="assets/libs/simplebar/simplebar.min.css">
+    
+    <!-- Bootstrap Css -->
+    <link href="assets/css/bootstrap.min.css" id="bootstrap-style" rel="stylesheet" type="text/css">
+    
+    <!--icons css-->
+    <link href="assets/css/icons.min.css" rel="stylesheet" type="text/css">
+    
+    <!-- App Css-->
+    <link href="assets/css/app.min.css" id="app-style" rel="stylesheet" type="text/css">
+
+</head>
+
 
 <header id="page-topbar">
     <div class="navbar-header">
@@ -226,7 +284,7 @@ if (!isset($_SESSION['user-id'])) {
                                 <div class="card-body p-0">
                                     <div class="grid-nav grid-nav-flush grid-nav-action grid-nav-no-rounded">
                                         <div class="grid-nav-row">
-                                            <a href="pages-profile.html" class="grid-nav-item">
+                                            <a href="UpdateUser.php?id=<?= $user['id'] ?>" class="grid-nav-item">
                                                 <div class="grid-nav-icon"><i class="far fa-address-card"></i></div>
                                                 <span class="grid-nav-content">Profile</span>
                                             </a>

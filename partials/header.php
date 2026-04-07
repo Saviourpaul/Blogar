@@ -5,6 +5,7 @@ require 'config/database.php';
 
 $user = null;
 
+
 if (isset($_SESSION['user-id'])) {
 
     $stmt = $connection->prepare("

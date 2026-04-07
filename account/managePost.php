@@ -1,4 +1,6 @@
-<?php require 'includes/header.php';
+<?php $pageTitle = 'ManagePost';
+require 'includes/header.php';
+
 
 // Check if user is logged in
 if (!isset($_SESSION['user-id'])) {
@@ -15,35 +17,7 @@ $posts = mysqli_query($connection, $query);
 
 ?>
 
-<!DOCTYPE html>
-<html lang="en">
 
-<head>
-
-    <meta charset="utf-8">
-    <title>Patient list | Aquiry Admin &amp; Dashboard Template </title>
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-    <meta content="Admin & Dashboard Template" name="description">
-    <meta content="Codebucks" name="author">
-
-    <!-- layout setup -->
-    <!-- <script type="module" src="assets/js/layout-setup.js"></script> -->
-
-    <!-- App favicon -->
-    <link rel="shortcut icon" href="assets/images/logo-sm.png">
-    <!-- Simplebar Css -->
-    <link rel="stylesheet" href="assets/libs/simplebar/simplebar.min.css">
-
-    <!-- Bootstrap Css -->
-    <link href="assets/css/bootstrap.min.css" id="bootstrap-style" rel="stylesheet" type="text/css">
-
-    <!--icons css-->
-    <link href="assets/css/icons.min.css" rel="stylesheet" type="text/css">
-
-    <!-- App Css-->
-    <link href="assets/css/app.min.css" id="app-style" rel="stylesheet" type="text/css">
-
-</head>
 
 <body>
     <!-- Begin page -->
@@ -149,7 +123,7 @@ $posts = mysqli_query($connection, $query);
                                                     <td><?= $post['title'] ?></td>
                                                     <td><?= $category['title'] ?></td>
                                                     <td>
-                                                        <a href="controller/edit-post-logic.php?id=<?= $post['id'] ?>"
+                                                        <a href="UpdatePost.php?id=<?= $post['id'] ?>"
                                                             class="btn sm"><button type="button"
                                                                 class="btn btn-sm btn-label-primary btn-icon"><i
                                                                     data-eva="edit-2-outline"></i></button>
@@ -202,21 +176,8 @@ $posts = mysqli_query($connection, $query);
             </div><!-- End Page-content -->
 
             <!-- Begin Footer -->
-            <footer class="footer">
-                <div class="container-fluid">
-                    <div class="row align-items-center">
-                        <div class="col-sm-6">
-                            <script>document.write(new Date().getFullYear())</script> © Aquiry.
-                        </div>
-                        <div class="col-sm-6">
-                            <div class="text-sm-end d-none d-sm-block">
-                                Crafted with <i class="mdi mdi-heart text-danger"></i> by <a href="http://codebucks.in/"
-                                    target="_blank" class="text-muted">Codebucks</a>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </footer>
+                      <?php include 'includes/footer.php' ?> 
+
             <!-- END Footer -->
             <!-- Begin scroll top -->
 
@@ -286,8 +247,34 @@ $posts = mysqli_query($connection, $query);
 
 
         </script>
+
+        
         <?php unset($_SESSION['delete-post-success']); ?>
     <?php endif; ?>
+
+    
+     <?php if (isset($_SESSION['edit-post-success'])): ?>
+
+        <script>
+
+            document.addEventListener("DOMContentLoaded", function () {
+
+                Swal.fire({
+                    icon: "success",
+                    title: " success",
+                    text: "<?= $_SESSION['edit-post-success'] ?>",
+                    confirmButtonColor: "#3085d6"
+                });
+
+            });
+
+        </script>
+
+        <?php unset($_SESSION['edit-post-success']); ?>
+        
+       
+    <?php endif;   ?>
+
     <script src="assets/js/sweetalert.js"></script>
 
     <!-- Bootstrap bundle js -->

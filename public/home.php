@@ -2,6 +2,7 @@
 require 'partials/header.php';
 
 
+
 // Fetch featured post from database
 $featured_query = "SELECT * FROM posts WHERE is_featured=1 LIMIT 1";
 $featured_result = mysqli_query($connection, $featured_query);

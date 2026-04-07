@@ -4,7 +4,7 @@ session_start();
 require '../config/database.php';
 
 if(!isset($_POST['submit'])){
-    header('location: ../manage-post.php');
+    header('location: ../managePost.php');
     exit;
 }
 
@@ -20,11 +20,7 @@ $thumbnail = $_FILES['thumbnail'];
 $thumbnail_name = $previous_thumbnail_name;
 
 
-/*
-|--------------------------------------------------------------------------
-| Upload new thumbnail if provided
-|--------------------------------------------------------------------------
-*/
+
 
 if(!empty($thumbnail['name'])){
 
@@ -33,13 +29,13 @@ if(!empty($thumbnail['name'])){
 
     if(!in_array($ext,$allowed)){
         $_SESSION['edit-post'] = "Invalid image format";
-        header('location: ../manage-post.php');
+        header('location: ../managePost.php');
         exit;
     }
 
     if($thumbnail['size'] > 5000000){
         $_SESSION['edit-post'] = "Image must be less than 5MB";
-        header('location: ../manage-post.php');
+        header('location: ../managePost.php');
         exit;
     }
 
@@ -60,22 +56,12 @@ if(!empty($thumbnail['name'])){
 }
 
 
-/*
-|--------------------------------------------------------------------------
-| Reset featured post
-|--------------------------------------------------------------------------
-*/
-
 if($is_featured == 1){
     mysqli_query($connection,"UPDATE posts SET is_featured=0");
 }
 
 
-/*
-|--------------------------------------------------------------------------
-| Update post
-|--------------------------------------------------------------------------
-*/
+
 
 $stmt = $connection->prepare(
 "UPDATE posts
@@ -97,5 +83,5 @@ $stmt->execute();
 
 $_SESSION['edit-post-success'] = "Post updated successfully";
 
-header('location: ../manage-post.php');
+header('location: ../managePost.php');
 exit;

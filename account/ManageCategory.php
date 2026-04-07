@@ -1,4 +1,7 @@
-<?php require 'includes/header.php';
+<?php $pageTitle = 'ManageCategory';
+require 'includes/header.php';
+
+
 
 // Check if user is logged in
 if (!isset($_SESSION['user-id'])) {
@@ -16,35 +19,6 @@ if (!$categories) {
 
 ?>
 
-<!DOCTYPE html>
-<html lang="en">
-
-<head>
-
-    <meta charset="utf-8">
-    <title>Patient list | Aquiry Admin &amp; Dashboard Template </title>
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-    <meta content="Admin & Dashboard Template" name="description">
-    <meta content="Codebucks" name="author">
-
-    <!-- layout setup -->
-    <!-- <script type="module" src="assets/js/layout-setup.js"></script> -->
-
-    <!-- App favicon -->
-    <link rel="shortcut icon" href="assets/images/logo-sm.png">
-    <!-- Simplebar Css -->
-    <link rel="stylesheet" href="assets/libs/simplebar/simplebar.min.css">
-
-    <!-- Bootstrap Css -->
-    <link href="assets/css/bootstrap.min.css" id="bootstrap-style" rel="stylesheet" type="text/css">
-
-    <!--icons css-->
-    <link href="assets/css/icons.min.css" rel="stylesheet" type="text/css">
-
-    <!-- App Css-->
-    <link href="assets/css/app.min.css" id="app-style" rel="stylesheet" type="text/css">
-
-</head>
 
 <body>
     <!-- Begin page -->
@@ -184,21 +158,8 @@ if (!$categories) {
             </div><!-- End Page-content -->
 
             <!-- Begin Footer -->
-            <footer class="footer">
-                <div class="container-fluid">
-                    <div class="row align-items-center">
-                        <div class="col-sm-6">
-                            <script>document.write(new Date().getFullYear())</script> © Aquiry.
-                        </div>
-                        <div class="col-sm-6">
-                            <div class="text-sm-end d-none d-sm-block">
-                                Crafted with <i class="mdi mdi-heart text-danger"></i> by <a href="http://codebucks.in/"
-                                    target="_blank" class="text-muted">Codebucks</a>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </footer>
+         <?php include 'includes/footer.php' ?> 
+
             <!-- END Footer -->
             <!-- Begin scroll top -->
 

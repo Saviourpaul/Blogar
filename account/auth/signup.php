@@ -99,11 +99,7 @@ unset($_SESSION['signup-data']);
                         </div>
                     </div>
                     
-                    <label for="addPatient" class="form-label border h-28 d-flex justify-content-center align-items-center flex-column gap-1 bg-body-tertiary rounded-2 cursor-pointer text-center">  
-                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" class="eva eva-cloud-upload-outline"><g data-name="Layer 2"><g data-name="cloud-upload"><rect width="24" height="24" opacity="0"></rect><path d="M12.71 11.29a1 1 0 0 0-1.4 0l-3 2.9a1 1 0 1 0 1.38 1.44L11 14.36V20a1 1 0 0 0 2 0v-5.59l1.29 1.3a1 1 0 0 0 1.42 0 1 1 0 0 0 0-1.42z"></path><path d="M17.67 7A6 6 0 0 0 6.33 7a5 5 0 0 0-3.08 8.27A1 1 0 1 0 4.75 14 3 3 0 0 1 7 9h.1a1 1 0 0 0 1-.8 4 4 0 0 1 7.84 0 1 1 0 0 0 1 .8H17a3 3 0 0 1 2.25 5 1 1 0 0 0 .09 1.42 1 1 0 0 0 .66.25 1 1 0 0 0 .75-.34A5 5 0 0 0 17.67 7z"></path></g></g></svg>                                                                                       
-                        <h6>Upload your Image</h6>
-                        <input type="file" id="addPatient" name="avatar" class="d-none">
-                    </label>
+                   
                     
                         <div class="mt-6 mb-8 d-flex justify-content-between align-items-center">
                             <div class="form-check">
@@ -114,7 +110,7 @@ unset($_SESSION['signup-data']);
                         </div>
                         <button type="submit" name="submit" class="btn btn-secondary w-100">Sign Up</button>
                         <div class="mt-5">
-                            <p class="mb-0">Already have an .. ? <a href="signin.php" class="fw-medium text-secondary"> Sign In </a> </p>
+                            <p class="mb-0">Already have an Account ? <a href="signin.php" class="fw-medium text-secondary"> Sign In </a> </p>
                         </div>
                        
                     </form>
@@ -143,7 +139,7 @@ unset($_SESSION['signup-data']);
     </div>
 </div>
 
-<?php if(isset($_SESSION['signup'])): ?>
+<?php if(isset($_SESSION['signup-errors'])): ?>
 
 <script>
 
@@ -152,7 +148,7 @@ document.addEventListener("DOMContentLoaded", function(){
 Swal.fire({
 icon: "error",
 title: " Failed",
-text: "<?= $_SESSION['signup'] ?>",
+text: "<?= $_SESSION['signup-errors'] ?>",
 confirmButtonColor: "#d33"
 });
 
@@ -160,7 +156,7 @@ confirmButtonColor: "#d33"
 
 </script>
 
-<?php unset($_SESSION['signup']); ?>
+<?php unset($_SESSION['signup-errors']); ?>
 
 <?php endif; ?>
 

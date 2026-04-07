@@ -12,7 +12,13 @@
                             <span>Dashboard</span>
                         </a>
                         
-                    </li>                   
+                    </li> 
+                     <li>
+                        <a href="post.php">
+                            <i class="fab fas fa-lightbulb"></i>
+                            <span>Idea</span>
+                        </a>
+                    </li>                  
                     <li>
                         <a href="CreatePost.php">
                             <i class="fab fa-superpowers"></i>

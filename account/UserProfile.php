@@ -1,56 +1,41 @@
 
-<?php  require 'includes/header.php';
-require_once  'includes/helpers.php';
-
-     
+<?php $pageTitle = 'UserProfile';
+  require 'includes/header.php';
 
 
 
-if (!isset($_SESSION['user-id'])) {
-    header("Location: signin.php");
-    exit();
+
+
+
+$id= filter_var($_GET['id'], FILTER_VALIDATE_INT);
+
+if (!$id) {
+    die("Invalid user ID");
 }
 
-$totalUsers = getCount('users', $connection);
-$totalCategories = getCount('categories', $connection);
-$totalPosts = getCount('posts', $connection);
+$stmt = $connection->prepare("
+    SELECT id, username, email, firstname, lastname, phone, bio, gender, birthday, address1, address2, country, zip_code, avatar 
+    FROM users WHERE id = ?
+");
+
+$stmt->bind_param("i", $id);
+$stmt->execute();
+
+$result = $stmt->get_result();
+
+if ($result->num_rows === 0) {
+    die("User not found");
+
+}
+
+
+$user = $result->fetch_assoc();
 
 
 
 ?>
 
-<!DOCTYPE html>
-<html lang="en">
 
-<head>
-
-    <meta charset="utf-8">
-    <title>Dashboard </title>
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-    <meta content="Admin & Dashboard Template" name="description">
-    <meta content="Codebucks" name="author">
-    
-    <!-- layout setup -->
-    <!-- <script type="module" src="assets/js/layout-setup.js"></script> -->
-    
-    <!-- App favicon -->
-    <link rel="shortcut icon" href="assets/images/logo-sm.png">
-      <!-- select2 -->
-    <link href="assets/libs/select2/css/select2.min.css" rel="stylesheet" type="text/css">
-
-    <!-- Simplebar Css -->
-    <link rel="stylesheet" href="assets/libs/simplebar/simplebar.min.css">
-    
-    <!-- Bootstrap Css -->
-    <link href="assets/css/bootstrap.min.css" id="bootstrap-style" rel="stylesheet" type="text/css">
-    
-    <!--icons css-->
-    <link href="assets/css/icons.min.css" rel="stylesheet" type="text/css">
-    
-    <!-- App Css-->
-    <link href="assets/css/app.min.css" id="app-style" rel="stylesheet" type="text/css">
-
-</head>
 
 <body>
 <!-- Begin page -->
@@ -78,6 +63,7 @@ $totalPosts = getCount('posts', $connection);
                 <!-- start page title -->
                 
                 <!-- end page title -->
+                 
                 <div class="row">
                     <div class="col-xl-6 col-xxl-5">
                         <div class="card sticky-top">
@@ -85,59 +71,52 @@ $totalPosts = getCount('posts', $connection);
                                 <div class="row align-items-center">
                                     <div class="col-md-5 border-end">
                                         <div class="text-center p-6">
-                                            <div class="avatar avatar-xl avatar-circle overflow-hidden mb-5">
-                                                <img src="assets/images/users/avatar-7.png" alt="Avatar Image" class="avatar-lg">
+                                            <div class="avatar avatar-xl avatar-circle overflow-hidden mb-3 hei">
+                                                 <img src="./uploads/<?= $user['avatar'] ?>" alt="User Avatar" class="avatar-img" height="100">
                                             </div>
-                                            <h6 class="mb-2 fs-15">Alexandra Rodriguez</h6>
-                                            <p class="text-muted small mb-5">alexandrarodriguez@gmail.com</p>
-                                            <p class="fw-semibold mb-5">Appointments</p>
-                                            <div class="d-flex justify-content-center mb-8">
-                                                <div class="w-50 border-end">
-                                                    <h4 class="mb-0 fs-18 fw-medium">10</h4>
-                                                    <span class="text-muted">Past</span>
-                                                </div>
-                                                <div class="w-50">
-                                                    <h4 class="mb-0 fs-18 fw-medium">3</h4>
-                                                    <span class="text-muted">Upcoming</span>
-                                                </div>
+                                            <h6 class="mb-2 fs-15"><?= htmlspecialchars($user['firstname'] ?? '') ?> <?= htmlspecialchars($user['lastname'] ?? '') ?></h6>
+                                            <p class="text-muted small mb-5"><?= htmlspecialchars($user['email'] ?? '') ?></p>
+                                            <p class="fw-semibold mb-5"><?= htmlspecialchars($user['bio'] ?? '') ?></p>
+                                            <p><strong>Email:</strong> <?= htmlspecialchars($user['email']) ?></p>
+                                            <p></p>
+                                                                          
                                             </div>
-                                            <button type="button" class="btn btn-primary w-100">Send Message</button>
-                                        </div>
+                                            
                                     </div>
                                     <div class="col-md-7">
                                         <div class="p-6">
                                             <div class="row gy-4 gx-6">
                                                 <div class="col-6">
                                                     <p class="text-muted mb-3">Gender</p>
-                                                    <p class="fs-14 fw-semibold mb-4">Male</p>
+                                                    <p class="fs-14 fw-semibold mb-4"> <?= htmlspecialchars($user['gender'] ?? '-') ?></p>
                                                 </div>
                                                 <div class="col-6">
-                                                    <p class="text-muted mb-3">Birthday</p>
-                                                    <p class="fs-14 fw-semibold mb-4">Jan 12, 1985</p>
+                                                    <p class="text-muted mb-3">Date of Birth</p>
+                                                    <p class="fs-14 fw-semibold mb-4"> <?= htmlspecialchars($user['birthday'] ?? '-') ?></p>
                                                 </div>
                                                 <div class="col-6">
-                                                    <p class="text-muted mb-3">Phone number</p>
-                                                    <p class="fs-14 fw-semibold mb-4">(123) 456-7890</p>
+                                                    <p class="text-muted mb-3">Phone</p>
+                                                    <p class="fs-14 fw-semibold mb-4"> <?= htmlspecialchars($user['phone'] ?? '-') ?></p>
+                                                </div>
+                                                <div class="col-6">
+                                                    <p class="text-muted mb-3">bio</p>
+                                                    <p class="fs-14 fw-semibold mb-4"> <?= htmlspecialchars($user['bio'] ?? '-') ?></p>
                                                 </div>
                                                 <div class="col-6">
                                                     <p class="text-muted mb-3">Address</p>
-                                                    <p class="fs-14 fw-semibold mb-4">123 Main St, Apt 4B</p>
+                                                    <p class="fs-14 fw-semibold mb-4"> <?= htmlspecialchars($user['address1'] ?? '-') ?> <?= htmlspecialchars($user['address2'] ?? '-') ?></p>
                                                 </div>
                                                 <div class="col-6">
-                                                    <p class="text-muted mb-3">City</p>
-                                                    <p class="fs-14 fw-semibold mb-4">New York</p>
+                                                    <p class="text-muted mb-3">Country</p>
+                                                    <p class="fs-14 fw-semibold mb-4"> <?= htmlspecialchars($user['country'] ?? '-') ?></p>
                                                 </div>
                                                 <div class="col-6">
                                                     <p class="text-muted mb-3">ZIP Code</p>
-                                                    <p class="fs-14 fw-semibold mb-4">10001</p>
-                                                </div>
-                                                <div class="col-6">
-                                                    <p class="text-muted mb-3">Registration Date</p>
-                                                    <p class="fs-14 fw-semibold mb-0">Mar 15, 2020</p>
+                                                    <p class="fs-14 fw-semibold mb-4"> <?= htmlspecialchars($user['zip_code'] ?? '-') ?></p>
                                                 </div>
                                                 <div class="col-6">
                                                     <p class="text-muted mb-3">Status</p>
-                                                    <p class="fs-14 fw-semibold mb-0">Active</p>
+                                                    <p class="fs-14 fw-semibold mb-0"> <?= htmlspecialchars($user['status'] ?? '-') ?></p>
                                                 </div>
                                             </div>
                                         </div>
@@ -216,32 +195,35 @@ $totalPosts = getCount('posts', $connection);
         </div><!-- End Page-content -->
 
         <!-- Begin Footer -->
-        <footer class="footer">
-            <div class="container-fluid">
-                <div class="row align-items-center">
-                    <div class="col-sm-6">
-                        <script>document.write(new Date().getFullYear())</script> © Aquiry.
-                    </div>
-                    <div class="col-sm-6">
-                        <div class="text-sm-end d-none d-sm-block">
-                            Crafted with <i class="mdi mdi-heart text-danger"></i> by <a href="http://codebucks.in/" target="_blank" class="text-muted">Codebucks</a>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </footer>
-        <!-- END Footer -->
-        <!-- Begin scroll top -->
-          <div class="progress-wrap" id="progress-scroll">
-            <svg class="progress-circle" width="100%" height="100%" viewBox="-1 -1 102 102">
-              <path d="M50,1 a49,49 0 0,1 0,98 a49,49 0 0,1 0,-98" />
-            </svg>
-          </div>
+                <?php include 'includes/footer.php' ?> 
+
         <!-- END scroll top -->
     </div><!-- end main content-->
 
 </div>
 <!-- END layout-wrapper -->
+<?php if (isset($_SESSION['update-user-success'])): ?>
+
+        <script>
+
+            document.addEventListener("DOMContentLoaded", function () {
+
+                Swal.fire({
+                    icon: "success",
+                    title: "Success",
+                    text: "<?= $_SESSION['update-user-success'] ?>",
+                    confirmButtonColor: "#3085d6"
+                });
+
+            });
+
+        </script>
+
+        <?php unset($_SESSION['update-user-success']); ?>
+        
+
+    <?php endif; ?>
+    <script src="assets/js/sweetalert.js"></script>
 
 
 <!-- Bootstrap bundle js -->

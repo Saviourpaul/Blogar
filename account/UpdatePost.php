@@ -1,29 +1,25 @@
-<?php $pageTitle = 'CreatePost';
+<?php $pageTitle = 'Edit Post';
 require 'includes/header.php';
 
+ //fetch categories from database
+ $category_query = "SELECT * FROM categories";
+ $categories = mysqli_query($connection, $category_query);
 
-
-// Check if user is logged in
-if (!isset($_SESSION['user-id'])) {
-    // Not logged in, redirect to login
-    header("Location: auth/signin.php");
-    exit();
+ if(isset($_GET['id'])){
+    $id = filter_var($_GET['id'], FILTER_VALIDATE_INT);
+    $query = "SELECT * FROM posts WHERE id=$id";
+    $post = mysqli_query($connection, $query);
+    $post = mysqli_fetch_assoc($post);
+ }else{
+    header('location: ../managePost.php');
+    die();
 }
 
-$query = "SELECT * FROM categories";
-$categories = mysqli_query($connection, $query);
-
-$title = $_SESSION['add-post-data']['title'] ?? null;
-$body = $_SESSION['add-post-data']['body'] ?? null;
-
-unset($_SESSION['add-post-data']);
-// get video_url from $_SESSION['add-post-data']
-$video_url = $_SESSION['add-post-data']['video_url'] ?? null;
-unset($_SESSION['add-post-data']['video_url']);
-
-
-
-?>
+$id = $_GET['id'];
+$query = "SELECT * FROM posts WHERE id=$id LIMIT 1";
+$result = mysqli_query($connection, $query);
+$post = mysqli_fetch_assoc($result);
+ ?>
 
 
 
@@ -37,7 +33,6 @@ unset($_SESSION['add-post-data']['video_url']);
         <!-- End topbar -->
         <!-- ========== Left Sidebar Start ========== -->
         <?= include 'includes/sidebar.php' ?>
-        
 
         <!-- Left Sidebar End -->
         <div class="sidebar-backdrop" id="sidebar-backdrop"></div>
@@ -45,7 +40,7 @@ unset($_SESSION['add-post-data']['video_url']);
 
         <!-- Left Sidebar End -->
         <div class="sidebar-backdrop" id="sidebar-backdrop"></div>
-
+       
         <div class="main-content">
 
             <div class="page-content">
@@ -61,16 +56,22 @@ unset($_SESSION['add-post-data']['video_url']);
                                     <h4 class="card-title">post  Information</h4>
                                 </div>
                                 <div class="card-body">
-                                        <form action="controller/add-post-logic.php" enctype="multipart/form-data"
+                                    <div class="row g-4">
+
+                                       
+                                         <form action="controller/UpdatePost-logic.php" enctype="multipart/form-data"
                                             method="POST">
                                             <div class="col-lg-8">
                                                 <div class="row g-4">
                                                     <div class="col-md-6">
+                                                         <input type="hidden" name="id" value="<?= $post['id'] ?>">
+                                                         <input type="hidden" name="previous_thumbnail_name" value="<?= $post['thumbnail'] ?>">
+           
                                                         <label for="title" class="form-label">Title </label>
-                                                        <input type="text" name="title" value="<?= $title ?>"
+                                                        <input type="text" name="title" value="<?=$post['title'] ?>"
                                                             class="form-control" placeholder="Enter Title">
                                                     </div>
-                                                   <textarea class="form-control" id="BAddress" rows="3" name="body" placeholder="Description" style="height: 150px; width: 30rem;"> <?= $body ?></textarea>
+                                                   <textarea class="form-control" id="BAddress" rows="3" name="body" placeholder="Description" style="height: 150px; width: 30rem;"><?=$post['body'] ?></textarea>
 
                                                    
                                                    <div class="col-md-6">
@@ -111,7 +112,7 @@ unset($_SESSION['add-post-data']['video_url']);
                                                                     </g>
                                                                 </g>
                                                             </svg>
-                                                            <h6>Upload your Image</h6>
+                                                            <h6>Change your Image</h6>
                                                             <input type="file"  name="thumbnail"  class="d-none" id="addPatient"
                                                                >
                                                         </label>
@@ -121,7 +122,7 @@ unset($_SESSION['add-post-data']['video_url']);
                                                     
                                                     <div class="md-4">
                                                         <button type="submit" name="submit"
-                                                            class="btn btn-secondary">Add
+                                                            class="btn btn-secondary">update
                                                             Post</button>
                                                     </div>
                                         </form>
@@ -135,13 +136,17 @@ unset($_SESSION['add-post-data']['video_url']);
             </div><!-- End Page-content -->
 
             <!-- Begin Footer -->
-                     <?php include 'includes/footer.php' ?> 
+                   <?php include 'includes/footer.php' ?> 
 
+            <!-- END Footer -->
+            <!-- Begin scroll top -->
+
+            <!-- END scroll top -->
         </div><!-- end main content-->
 
     </div><!-- END layout-wrapper -->
 
-    <?php if (isset($_SESSION['add-post'])): ?>
+    <?php if (isset($_SESSION['edit-post'])): ?>
 
         <script>
 
@@ -150,7 +155,7 @@ unset($_SESSION['add-post-data']['video_url']);
                 Swal.fire({
                     icon: "error",
                     title: " Failed",
-                    text: "<?= $_SESSION['add-post'] ?>",
+                    text: "<?= $_SESSION['edit-category'] ?>",
                     confirmButtonColor: "#d33"
                 });
 
@@ -158,13 +163,18 @@ unset($_SESSION['add-post-data']['video_url']);
 
         </script>
 
-        <?php unset($_SESSION['add-post']); ?>
-
-    <?php endif; ?>
-     
+        <?php unset($_SESSION['edit-post']); ?>
+        
+       
+    <?php endif;   ?>
 
    
-    <script src="assets/js/sweetalert.js"></script>
+
+    
+    
+
+
+    <script src="../assets/js/sweetalert.js"></script>
 
 
 

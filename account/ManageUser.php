@@ -1,8 +1,8 @@
-<?php require 'includes/header.php';
+<?php $pageTitle ='ManageUser';
+require 'includes/header.php';
 
-// Check if user is logged in
+
 if (!isset($_SESSION['user-id'])) {
-    // Not logged in, redirect to login
     header("Location: auth/signin.php");
     exit();
 }
@@ -21,35 +21,7 @@ $users = mysqli_query($connection, $query);
 
 ?>
 
-<!DOCTYPE html>
-<html lang="en">
 
-<head>
-
-    <meta charset="utf-8">
-    <title>Patient list | Aquiry Admin &amp; Dashboard Template </title>
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-    <meta content="Admin & Dashboard Template" name="description">
-    <meta content="Codebucks" name="author">
-
-    <!-- layout setup -->
-    <!-- <script type="module" src="assets/js/layout-setup.js"></script> -->
-
-    <!-- App favicon -->
-    <link rel="shortcut icon" href="assets/images/logo-sm.png">
-    <!-- Simplebar Css -->
-    <link rel="stylesheet" href="assets/libs/simplebar/simplebar.min.css">
-
-    <!-- Bootstrap Css -->
-    <link href="assets/css/bootstrap.min.css" id="bootstrap-style" rel="stylesheet" type="text/css">
-
-    <!--icons css-->
-    <link href="assets/css/icons.min.css" rel="stylesheet" type="text/css">
-
-    <!-- App Css-->
-    <link href="assets/css/app.min.css" id="app-style" rel="stylesheet" type="text/css">
-
-</head>
 
 <body>
     <!-- Begin page -->
@@ -135,7 +107,7 @@ $users = mysqli_query($connection, $query);
 
                                             <th>Name</th>
                                             <th>Username</th>
-                                            <th>Edit</th>
+                                            <th>View</th>
                                             <th>Delete</th>
                                             <th>Admin</th>
 
@@ -148,7 +120,7 @@ $users = mysqli_query($connection, $query);
 
                                             <tr>
                                                 <td>
-                                                    <a href="UserProfile.php?id=<?= $user['id'] ?>"
+                                                    <a 
                                                         class="d-flex align-items-center gap-2 text-body">
                                                         <span class="avatar avatar-sm avatar-circle overflow-hidden">
                                                             <img src="./uploads/<?= $user['avatar'] ?>" alt="Avatar Image"
@@ -162,25 +134,21 @@ $users = mysqli_query($connection, $query);
 
                                                 <td><?= $user['username'] ?></td>
                                                 <td>
-                                                    <button 
-                                                        class="btn btn-sm btn-primary"
-                                                        data-bs-toggle="modal"
-                                                        data-bs-target="#editUserModal"
-                                                        data-id="<?= $user['id'] ?>"
-                                                        data-firstname="<?= htmlspecialchars($user['firstname']) ?>"
-                                                        data-lastname="<?= htmlspecialchars($user['lastname']) ?>"
-                                                        data-username="<?= htmlspecialchars($user['username']) ?>"
-                                                        data-is_admin="<?= htmlspecialchars($user['is_admin']) ?>">
-
-                                                        <i class="sm bi bi-pencil"></i>
+                                                     
+                                                    <a href="UserProfile.php?id=<?= $user['id'] ?>"
+                                                    class="btn sm"><button type="button"
+                                                        class="btn btn-sm btn-secondary"
+                                                          class="btn btn-sm-label-view btn-icon">
+                                                        <i class="sm bi bi-eye"></i>
                                                         </button>
+                                                    </a>
                                                 </td>
 
                                                 <td>
                                                     <a href="controller/delete-user.php?id=<?= $user['id'] ?>"
                                                         class="btn sm"><button type="button"
                                                             class="btn btn-sm btn-label-danger btn-icon "><i
-                                                                data-eva="edit-2-outline"></i></button>
+                                                                data-eva="trash-2-outline"></i></button>
                                                     </a>
                                                 </td>
                                                 <td><?= $user['is_admin'] ? 'Yes' : 'No' ?>
@@ -227,75 +195,11 @@ $users = mysqli_query($connection, $query);
 
                 </div><!-- container-fluid -->
             </div><!-- End Page-content -->
-            <div class="modal fade" id="editUserModal" tabindex="-1">
-                <div class="modal-dialog">
-                    <div class="modal-content">
-
-                        <div class="modal-header">
-                            <h5 class="modal-title">Edit User</h5>
-                            <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-                        </div>
-
-                        <form action="controller/update-user.php" enctype="multipart/form-data" method="POST">
-
-                            <div class="modal-body">
-
-                                <input type="hidden"  name="id" >
-
-                                <div class="mb-3">
-                                    <label>First Name</label>
-                                    <input type="text" class="form-control" id="edit-firstname" name="firstname">
-                                </div>
-
-                                <div class="mb-3">
-                                    <label>Last Name</label>
-                                    <input type="text" class="form-control" id="edit-lastname" name="lastname">
-
-                                </div>
-
-                                <div class="mb-3">
-                                    <label>Username</label>
-                                    <input type="text" class="form-control" id="edit-username" name="username">
-
-                                </div>
-                                <div class="md-3">
-                                    <label for="role" class="form-label">Role *</label>
-                                    <select name="userrole" id="edit-role class="form-select">
-                                        <option selected disabled>Select Role</option>
-                                        <option value="0" >Author</option>
-                                        <option value="1">Admin</option>
-                                    </select>
-                                </div>
-
-
-                            </div>
-
-                            <div class="modal-footer">
-                                <button type="submit" name="submit" class="btn btn-primary">Update</button>
-                            </div>
-
-                        </form>
-
-                    </div>
-                </div>
-            </div>
+           
 
             <!-- Begin Footer -->
-            <footer class="footer">
-                <div class="container-fluid">
-                    <div class="row align-items-center">
-                        <div class="col-sm-6">
-                            <script>document.write(new Date().getFullYear())</script> © Aquiry.
-                        </div>
-                        <div class="col-sm-6">
-                            <div class="text-sm-end d-none d-sm-block">
-                                Crafted with <i class="mdi mdi-heart text-danger"></i> by <a href="http://codebucks.in/"
-                                    target="_blank" class="text-muted">Codebucks</a>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </footer>
+                      <?php include 'includes/footer.php' ?> 
+
             <!-- END Footer -->
             <!-- Begin scroll top -->
 
@@ -303,33 +207,7 @@ $users = mysqli_query($connection, $query);
         </div><!-- end main content-->
 
     </div><!-- END layout-wrapper -->
-    <script>
-document.addEventListener("DOMContentLoaded", function(){
-
-    const modal = document.getElementById('editUserModal');
-
-    modal.addEventListener('show.bs.modal', function(event){
-
-        const button = event.relatedTarget;
-
-        // Extract data from button
-        const id = button.getAttribute('data-id');
-        const firstname = button.getAttribute('data-firstname');
-        const lastname = button.getAttribute('data-lastname');
-        const username = button.getAttribute('data-username');
-        const role = button.getAttribute('data-is_admin');
-
-        // Inject into modal
-        document.getElementById('edit-id').value = id;
-        document.getElementById('edit-firstname').value = firstname;
-        document.getElementById('edit-lastname').value = lastname;
-        document.getElementById('edit-username').value = username;
-        document.getElementById('edit-role').value = role;
-
-    });
-
-});
-</script>
+  
     <?php if (isset($_SESSION['add-user-success'])): ?>
 
         <script>

@@ -1,0 +1,23 @@
+  <!-- Begin Footer -->
+            <footer class="footer">
+                <div class="container-fluid">
+                    <div class="row align-items-center">
+                        <div class="col-sm-6">
+                            <script>document.write(new Date().getFullYear())</script> © IdeaHub.
+                        </div>
+                        <div class="col-sm-6">
+                            <div class="text-sm-end d-none d-sm-block">
+                                Crafted with <i class="mdi mdi-heart text-danger"></i> by <a href="http://saviourpaul.com"
+                                    target="_blank" class="text-muted">saviour paul</a>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </footer>
+            <!-- END Footer -->
+            <!-- Begin scroll top -->
+            <div class="progress-wrap" id="progress-scroll">
+                <svg class="progress-circle" width="100%" height="100%" viewBox="-1 -1 102 102">
+                    <path d="M50,1 a49,49 0 0,1 0,98 a49,49 0 0,1 0,-98" />
+                </svg>
+            </div>

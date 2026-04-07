@@ -75,7 +75,7 @@ unset($_SESSION['signin-data']);
                         </div>
                         <button type="submit" name="submit" class="btn btn-secondary w-100">Sign in</button>
                         <div class="mt-5">
-                            <p class="mb-0">Don't have  .. ? <a href="signup.php" class="fw-medium text-secondary"> Sign up </a> </p>
+                            <p class="mb-0">Don't have  Account ? <a href="signup.php" class="fw-medium text-secondary"> Sign up </a> </p>
                         </div>
                        
                     </form>
