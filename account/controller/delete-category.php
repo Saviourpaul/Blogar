@@ -1,5 +1,4 @@
 <?php
-require '../config/database.php';
 
 
 if(isset($_GET['id'])) {
@@ -16,5 +15,5 @@ if(isset($_GET['id'])) {
     }
 }
 
-header("Location: ../ManageCategory.php");
+header("Location: manageCategory");
 die();

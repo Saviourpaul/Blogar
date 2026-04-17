@@ -1,6 +1,5 @@
 <?php
 
-include '../config/database.php';
 
 if (!isset($_GET['id'])) {
     die("Invalid request");
@@ -26,7 +25,7 @@ $stmt->fetch();
 
 // Delete avatar
 if (!empty($avatar)) {
-    $avatar_path = '../images/' . $avatar;
+    $avatar_path = 'account/uploads/' . $avatar;
     if (file_exists($avatar_path)) {
         unlink($avatar_path);
     }
@@ -45,5 +44,5 @@ if ($stmt->affected_rows === 1) {
     $_SESSION['delete-user'] = "Failed to delete user.";
 }
 
-header("Location: ../ManageUser.php");
+header("Location: ManageUser");
 exit();

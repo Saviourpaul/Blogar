@@ -1,5 +1,4 @@
 <?php
-require '../config/database.php';
 
 if (isset($_POST['submit'])) {
 
@@ -36,6 +35,6 @@ WHERE id=$id  LIMIT 1";
     }
 }
 
-header("Location: ../ManageCategory.php");
+header("Location: manageCategory");
 exit();
 

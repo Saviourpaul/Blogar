@@ -1,5 +1,4 @@
 <?php
-require '../config/database.php'; 
 
 if (isset($_POST['submit'])) {
 
@@ -35,7 +34,7 @@ if (isset($_POST['submit'])) {
     ];
 
     if (isset($_FILES['avatar']['name']) && $_FILES['avatar']['error'] === UPLOAD_ERR_OK) {
-        $upload_dir = '../uploads/'; 
+        $upload_dir = 'account/uploads/'; 
         $file_tmp = $_FILES['avatar']['tmp_name'];
         $file_name = time() . '_' . basename($_FILES['avatar']['name']); 
         $target_file = $upload_dir . $file_name;
@@ -57,21 +56,21 @@ if (!empty($current_password) || !empty($create_password) || !empty($confirm_pas
     // 1. Check if any fields are missing
     if (empty($current_password) || empty($create_password) || empty($confirm_password)) {
         $_SESSION['update-user'] = "Please fill in all password fields to change your password.";
-        header("Location: ../UpdateUser.php");
+        header("Location: UpdateUser");
         exit;
     }
 
     // 2. Check if New Password and Confirm Password match
     if ($create_password !== $confirm_password) {
         $_SESSION['update-user'] = "New passwords do not match.";
-        header("Location: ../UpdateUser.php");
+        header("Location: UpdateUser");
         exit;
     }
 
     // 3. Check Password Strength (Letters and Numbers)
     if (!preg_match('/[A-Za-z]/', $create_password) || !preg_match('/[0-9]/', $create_password)) {
         $_SESSION['update-user'] = "New password must include both letters and numbers.";
-        header("Location: ../UpdateUser.php");
+        header("Location: UpdateUser");
         exit;
     }
 
@@ -93,7 +92,7 @@ if (!empty($current_password) || !empty($create_password) || !empty($confirm_pas
     } else {
         // Current password entered does not match DB
         $_SESSION['update-user'] = "Current password is incorrect.";
-        header("Location: ../UpdateUser.php");
+        header("Location: UpdateUser");
         exit;
     }
 }
@@ -118,11 +117,11 @@ if (!empty($current_password) || !empty($create_password) || !empty($confirm_pas
         $_SESSION['update-user'] = "Statement preparation failed: " . $connection->error;
     }
 
-    header("Location: ../UpdateUser.php");
+    header("Location: UpdateUser");
     exit;
 
 } else {
-    header("Location: ../UpdateUser.php");
+    header("Location: UpdateUser");
     exit;
 }
 ?>

@@ -3,10 +3,8 @@ require 'includes/header.php';
 
 
 
-// Check if user is logged in
 if (!isset($_SESSION['user-id'])) {
-    // Not logged in, redirect to login
-    header("Location: auth/signin.php");
+    header("Location: signin");
     exit();
 }
 
@@ -64,7 +62,7 @@ unset($_SESSION['add-user-data']);
                                     <div class="row g-4">
 
                                        
-                                        <form action="controller/add-user-logic.php" enctype="multipart/form-data"
+                                        <form action="add-user-logic" enctype="multipart/form-data"
                                             method="POST">
                                             <div class="col-lg-8">
                                                 <div class="row g-4">
@@ -222,37 +220,37 @@ unset($_SESSION['add-user-data']);
             });
         });
     </script>
-    <script src="assets/js/sweetalert.js"></script>
+    <script src="account/assets/js/sweetalert.js"></script>
 
 
 
     <!-- Bootstrap bundle js -->
-    <script src="assets/libs/bootstrap/js/bootstrap.bundle.min.js"></script>
+    <script src="account/assets/libs/bootstrap/js/bootstrap.bundle.min.js"></script>
 
     <!-- Layouts main js -->
-    <script src="assets/libs/jquery/jquery.min.js"></script>
+    <script src="account/assets/libs/jquery/jquery.min.js"></script>
 
     <!-- Metimenu js -->
-    <script src="assets/libs/metismenu/metisMenu.min.js"></script>
+    <script src="account/assets/libs/metismenu/metisMenu.min.js"></script>
 
     <!-- simplebar js -->
-    <script src="assets/libs/simplebar/simplebar.min.js"></script>
+    <script src="account/assets/libs/simplebar/simplebar.min.js"></script>
 
-    <script src="assets/libs/eva-icons/eva.min.js"></script>
+    <script src="account/assets/libs/eva-icons/eva.min.js"></script>
 
     <!-- Scroll Top init -->
-    <script src="assets/js/scroll-top.init.js"></script>
+    <script src="account/assets/js/scroll-top.init.js"></script>
     <!-- Bootstrap datepicker -->
-    <script src="assets/libs/bootstrap-datepicker/js/bootstrap-datepicker.min.js"></script>
+    <script src="account/assets/libs/bootstrap-datepicker/js/bootstrap-datepicker.min.js"></script>
 
     <!-- select2 -->
-    <script src="assets/libs/select2/js/select2.min.js"></script>
+    <script src="account/assets/libs/select2/js/select2.min.js"></script>
 
     <!-- Init js -->
-    <script src="assets/js/apps/add-patient-init.js"></script>
+    <script src="account/assets/js/apps/add-patient-init.js"></script>
 
     <!-- App js -->
-    <script src="assets/js/app.js"></script>
+    <script src="account/assets/js/app.js"></script>
 
 </body>
 

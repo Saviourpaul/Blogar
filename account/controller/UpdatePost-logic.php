@@ -1,16 +1,15 @@
 <?php
 
-session_start();
-require '../config/database.php';
+require_once __DIR__ . '/../includes/helpers.php';
 
 if(!isset($_POST['submit'])){
-    header('location: ../managePost.php');
+    header('location: managePost');
     exit;
 }
 
 $id = intval($_POST['id']);
 $title = trim($_POST['title']);
-$body = trim($_POST['body']);
+$body = sanitizeRichTextHtml($_POST['body'] ?? '');
 $category_id = intval($_POST['category']);
 $is_featured = isset($_POST['is_featured']) ? 1 : 0;
 
@@ -29,13 +28,13 @@ if(!empty($thumbnail['name'])){
 
     if(!in_array($ext,$allowed)){
         $_SESSION['edit-post'] = "Invalid image format";
-        header('location: ../managePost.php');
+        header('location: managePost');
         exit;
     }
 
     if($thumbnail['size'] > 5000000){
         $_SESSION['edit-post'] = "Image must be less than 5MB";
-        header('location: ../managePost.php');
+        header('location: managePost');
         exit;
     }
 
@@ -43,12 +42,12 @@ if(!empty($thumbnail['name'])){
 
     move_uploaded_file(
         $thumbnail['tmp_name'],
-        '../images/'.$thumbnail_name
+        'account/images/'.$thumbnail_name
     );
 
     /* delete old thumbnail */
 
-    $old_path = '../images/'.$previous_thumbnail_name;
+    $old_path = 'account/images/'.$previous_thumbnail_name;
 
     if(file_exists($old_path)){
         unlink($old_path);
@@ -83,5 +82,5 @@ $stmt->execute();
 
 $_SESSION['edit-post-success'] = "Post updated successfully";
 
-header('location: ../managePost.php');
+header('location: managePost');
 exit;

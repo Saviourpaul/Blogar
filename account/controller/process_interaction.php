@@ -1,11 +1,8 @@
 <?php
-session_start();
-error_reporting(0); 
+
 header('Content-Type: application/json');
 
-require_once '../config/database.php';
-
-$session_user_id = $_SESSION['user-id'] ?? $_SESSION['user_id'] ?? null;
+$session_user_id = $_SESSION['user-id'] ?? $_SESSION['user-id'] ?? null;
 
 if (!$session_user_id) {
     echo json_encode(['status' => 'error', 'message' => 'Unauthorized. Please log in.']);
@@ -15,6 +12,7 @@ if (!$session_user_id) {
 $user_id = (int)$session_user_id;
 $post_id = (int)($_POST['post_id'] ?? 0);
 $action  = $_POST['action'] ?? ''; 
+$user_choice = null;
 
 // 2. Validate Input
 if ($post_id <= 0 || !in_array($action, ['like', 'dislike', 'share'])) {
@@ -36,14 +34,17 @@ if ($action === 'share') {
         $stmt = $connection->prepare("INSERT INTO post_interactions (post_id, user_id, interaction_type) VALUES (?, ?, ?)");
         $stmt->bind_param("iis", $post_id, $user_id, $action);
         $stmt->execute();
+        $user_choice = $action;
     } elseif ($existing['interaction_type'] === $action) {
         $stmt = $connection->prepare("DELETE FROM post_interactions WHERE post_id = ? AND user_id = ? AND interaction_type = ?");
         $stmt->bind_param("iis", $post_id, $user_id, $action);
         $stmt->execute();
+        $user_choice = null;
     } else {
         $stmt = $connection->prepare("UPDATE post_interactions SET interaction_type = ? WHERE post_id = ? AND user_id = ? AND interaction_type != 'share'");
         $stmt->bind_param("sii", $action, $post_id, $user_id);
         $stmt->execute();
+        $user_choice = $action;
     }
 }
 
@@ -59,6 +60,7 @@ $counts = $stmt->get_result()->fetch_assoc();
 
 echo json_encode([
     'status' => 'success', 
+    'user_choice' => $user_choice,
     'data' => [
         'likes' => (int)($counts['likes'] ?? 0),
         'dislikes' => (int)($counts['dislikes'] ?? 0),

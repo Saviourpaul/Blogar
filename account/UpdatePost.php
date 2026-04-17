@@ -1,6 +1,12 @@
 <?php $pageTitle = 'Edit Post';
 require 'includes/header.php';
 
+$appBasePath = rtrim(str_replace('\\', '/', dirname($_SERVER['SCRIPT_NAME'] ?? '')), '/');
+if ($appBasePath === '/' || $appBasePath === '.') {
+    $appBasePath = '';
+}
+$tinyMceBaseUrl = $appBasePath . '/account/assets/libs/tinymce';
+
  //fetch categories from database
  $category_query = "SELECT * FROM categories";
  $categories = mysqli_query($connection, $category_query);
@@ -11,7 +17,7 @@ require 'includes/header.php';
     $post = mysqli_query($connection, $query);
     $post = mysqli_fetch_assoc($post);
  }else{
-    header('location: ../managePost.php');
+    header('location: managePost');
     die();
 }
 
@@ -59,8 +65,8 @@ $post = mysqli_fetch_assoc($result);
                                     <div class="row g-4">
 
                                        
-                                         <form action="controller/UpdatePost-logic.php" enctype="multipart/form-data"
-                                            method="POST">
+                                         <form action="update-post-logic" enctype="multipart/form-data"
+                                            method="POST" id="update-post-form">
                                             <div class="col-lg-8">
                                                 <div class="row g-4">
                                                     <div class="col-md-6">
@@ -68,10 +74,13 @@ $post = mysqli_fetch_assoc($result);
                                                          <input type="hidden" name="previous_thumbnail_name" value="<?= $post['thumbnail'] ?>">
            
                                                         <label for="title" class="form-label">Title </label>
-                                                        <input type="text" name="title" value="<?=$post['title'] ?>"
+                                                        <input type="text" name="title" value="<?= htmlspecialchars((string) $post['title'], ENT_QUOTES, 'UTF-8') ?>"
                                                             class="form-control" placeholder="Enter Title">
                                                     </div>
-                                                   <textarea class="form-control" id="BAddress" rows="3" name="body" placeholder="Description" style="height: 150px; width: 30rem;"><?=$post['body'] ?></textarea>
+                                                    <div class="col-12">
+                                                        <label for="post-body-editor" class="form-label">Description</label>
+                                                        <textarea class="form-control" id="post-body-editor" rows="10" name="body" placeholder="Description"><?= htmlspecialchars((string) $post['body'], ENT_QUOTES, 'UTF-8') ?></textarea>
+                                                    </div>
 
                                                    
                                                    <div class="col-md-6">
@@ -175,6 +184,7 @@ $post = mysqli_fetch_assoc($result);
 
 
     <script src="../assets/js/sweetalert.js"></script>
+    <script src="<?= htmlspecialchars($tinyMceBaseUrl, ENT_QUOTES, 'UTF-8') ?>/tinymce.min.js"></script>
 
 
 
@@ -205,6 +215,45 @@ $post = mysqli_fetch_assoc($result);
 
     <!-- App js -->
     <script src="assets/js/app.js"></script>
+    <script>
+        document.addEventListener("DOMContentLoaded", function () {
+            if (typeof tinymce === "undefined") {
+                return;
+            }
+
+            tinymce.init({
+                selector: "#post-body-editor",
+                base_url: <?= json_encode($tinyMceBaseUrl) ?>,
+                suffix: ".min",
+                license_key: "gpl",
+                height: 380,
+                min_height: 320,
+                menubar: "edit insert format tools",
+                branding: false,
+                promotion: false,
+                plugins: "advlist autolink lists link preview code wordcount quickbars",
+                toolbar: "undo redo | blocks | bold italic underline | alignleft aligncenter alignright | bullist numlist outdent indent | link blockquote | removeformat code preview",
+                block_formats: "Paragraph=p; Heading 2=h2; Heading 3=h3; Heading 4=h4",
+                toolbar_sticky: true,
+                statusbar: true,
+                quickbars_selection_toolbar: "bold italic underline | quicklink blockquote bullist numlist",
+                link_default_target: "_blank",
+                link_assume_external_targets: true,
+                skin_url: <?= json_encode($tinyMceBaseUrl . '/skins/ui/oxide') ?>,
+                content_css: <?= json_encode($tinyMceBaseUrl . '/skins/content/default/content.min.css') ?>,
+                content_style: "body { font-family: Helvetica, Arial, sans-serif; font-size: 14px; line-height: 1.6; } body.mce-content-body { padding: 12px; } a { color: #0d6efd; text-decoration: underline; } ul, ol { padding-left: 1.5rem; margin: 0 0 1rem; } blockquote { border-left: 4px solid #d0d7de; margin: 1rem 0; padding-left: 1rem; color: #495057; } pre { background: #f8f9fa; border-radius: 8px; padding: 12px; }",
+                relative_urls: false,
+                convert_urls: false
+            });
+
+            const form = document.getElementById("update-post-form");
+            if (form) {
+                form.addEventListener("submit", function () {
+                    tinymce.triggerSave();
+                });
+            }
+        });
+    </script>
 
 </body>
 

@@ -1,7 +1,8 @@
 RewriteEngine On
-RewriteBase /blogar/
 
+# If the request is a real file (like an image or CSS) or directory, let it pass
 RewriteCond %{REQUEST_FILENAME} !-f
 RewriteCond %{REQUEST_FILENAME} !-d
 
-RewriteRule ^(.+)$ index.php?page=$1 [L,QSA]
+# Otherwise, send everything to index.php
+RewriteRule ^(.*)$ index.php [QSA,L]

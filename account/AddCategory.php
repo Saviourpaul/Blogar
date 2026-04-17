@@ -4,10 +4,8 @@
 
 
 
-// Check if user is logged in
 if (!isset($_SESSION['user-id'])) {
-    // Not logged in, redirect to login
-    header("Location: auth/signin.php");
+    header("Location: signin");
     exit();
 }
 
@@ -58,7 +56,7 @@ unset($_SESSION['add-category-data']);
                                     <div class="row g-4">
 
                                        
-                                        <form action="controller/add-category-logic.php" enctype="multipart/form-data"
+                                        <form action="add-category-logic" enctype="multipart/form-data"
                                             method="POST">
                                             <div class="col-lg-8">
                                                 <div class="row g-4">

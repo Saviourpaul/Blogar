@@ -3,10 +3,8 @@ require 'includes/header.php';
 
 
 
-// Check if user is logged in
 if (!isset($_SESSION['user-id'])) {
-    // Not logged in, redirect to login
-    header("Location: auth/signin.php");
+    header("Location: signin");
     exit();
 }
 
@@ -16,6 +14,26 @@ $categories = mysqli_query($connection, $stmt);
 if (!$categories) {
     die(mysqli_error($connection));
 }
+
+$items_per_page = 10;
+$current_page = isset($_GET['page']) ? (int) $_GET['page'] : 1;
+if ($current_page < 1)
+    $current_page = 1;
+
+$offset = ($current_page - 1) * $items_per_page;
+
+$total_query = mysqli_query($connection, "SELECT COUNT(*) as total FROM categories");
+$total_rows = mysqli_fetch_assoc($total_query)['total'];
+$total_pages = ceil($total_rows / $items_per_page);
+
+$query = "SELECT * FROM categories ORDER BY title ASC LIMIT $items_per_page OFFSET $offset";
+$categories = mysqli_query($connection, $query);
+
+$start_item = $offset + 1;
+$end_item = min($offset + $items_per_page, $total_rows);
+if ($total_rows == 0)
+    $start_item = 0;
+
 
 ?>
 
@@ -86,7 +104,7 @@ if (!$categories) {
                                         <li><a class="dropdown-item" href="#!">Archived</a></li>
                                     </ul>
                                 </div>
-                                <a href="AddCategory.php" class="btn btn-secondary"><i data-eva="plus-circle-outline"
+                                <a href="addCategory" class="btn btn-secondary"><i data-eva="plus-circle-outline"
                                         class="size-4"></i> Add Category </a>
                             </div>
                         </div>
@@ -109,14 +127,14 @@ if (!$categories) {
                                                     <td><?= $category['title'] ?></a></td>
 
                                                     <td>
-                                                        <a href="EditCategory.php?id=<?= $category['id'] ?>"
+                                                        <a href="EditCategory?id=<?= $category['id'] ?>"
                                                             class="btn btn-sm btn-label-primary btn-icon"><i
                                                                 data-eva="edit-2-outline"></i></a>
 
                                                     </td>
                                                     <td>
 
-                                                        <a href="controller/delete-category.php?id=<?= $category['id'] ?>"
+                                                        <a href="delete-category?id=<?= $category['id'] ?>"
                                                             class="btn btn-sm btn-label-danger btn-icon delete-category-btn"><i
                                                                 data-eva="trash-2-outline"></i></a>
                                                     </td>
@@ -129,28 +147,47 @@ if (!$categories) {
                                 <?php endif ?>
                             </div>
 
-                            <div class="d-flex align-items-center gap-4 justify-content-between mt-3 flex-wrap">
-                                <div>
-                                    <p class="mb-0 text-muted">Showing <span class="fw-semibold text-body">1</span> -
-                                        <span class="fw-semibold text-body">10</span> of <span
-                                            class="fw-semibold text-body">50</span> Results
-                                    </p>
+                            <?php if ($total_pages > 1): ?>
+                                <div class="text-center mt-4 mb-5">
+                                    <ul class="pagination justify-content-center pagination-rounded">
+
+                                        <li class="page-item <?= ($current_page <= 1) ? 'disabled' : '' ?>">
+                                            <a href="<?= ($current_page <= 1) ? 'javascript:void(0);' : '?page=' . ($current_page - 1) ?>"
+                                                class="page-link">
+                                                <i class="mdi mdi-chevron-left"></i>
+                                            </a>
+                                        </li>
+
+                                        <?php
+                                        $visible_pages = 2;
+
+                                        for ($i = 1; $i <= $total_pages; $i++):
+                                            if ($i == 1 || $i == $total_pages || ($i >= $current_page - $visible_pages && $i <= $current_page + $visible_pages)):
+                                                ?>
+                                                <li class="page-item <?= ($i == $current_page) ? 'active' : '' ?>">
+                                                    <a href="?page=<?= $i ?>" class="page-link"><?= $i ?></a>
+                                                </li>
+                                            <?php
+                                            elseif ($i == $current_page - $visible_pages - 1 || $i == $current_page + $visible_pages + 1):
+                                                ?>
+                                                <li class="page-item disabled">
+                                                    <a href="javascript:void(0);" class="page-link">...</a>
+                                                </li>
+                                            <?php
+                                            endif;
+                                        endfor;
+                                        ?>
+
+                                        <li class="page-item <?= ($current_page >= $total_pages) ? 'disabled' : '' ?>">
+                                            <a href="<?= ($current_page >= $total_pages) ? 'javascript:void(0);' : '?page=' . ($current_page + 1) ?>"
+                                                class="page-link">
+                                                <i class="mdi mdi-chevron-right"></i>
+                                            </a>
+                                        </li>
+
+                                    </ul>
                                 </div>
-                                <ul class="pagination pagination-arrow mb-0 ms-auto">
-                                    <li class="page-item"><a class="page-link page-prev" href="#!"><i
-                                                class="mdi mdi-chevron-left align-middle pagination-left"></i><i
-                                                class="mdi mdi-chevron-right align-middle pagination-right"></i><span
-                                                class="visually-hidden">Previous</span></a></li>
-                                    <li class="page-item"><a class="page-link active" href="#!">1</a></li>
-                                    <li class="page-item"><a class="page-link" href="#!">2</a></li>
-                                    <li class="page-item"><a class="page-link" href="#!">3</a></li>
-                                    <li class="page-item"><a class="page-link" href="#!">4</a></li>
-                                    <li class="page-item"><a class="page-link page-next" href="#!"><i
-                                                class="mdi mdi-chevron-right pagination-right align-middle"></i><i
-                                                class="mdi mdi-chevron-left pagination-left align-middle"></i><span
-                                                class="visually-hidden">Next</span></a></li>
-                                </ul>
-                            </div>
+                            <?php endif; ?>
                         </div>
                     </div>
 
@@ -158,7 +195,7 @@ if (!$categories) {
             </div><!-- End Page-content -->
 
             <!-- Begin Footer -->
-         <?php include 'includes/footer.php' ?> 
+            <?php include 'includes/footer.php' ?>
 
             <!-- END Footer -->
             <!-- Begin scroll top -->
@@ -214,7 +251,7 @@ if (!$categories) {
         });
 
     </script>
-     <?php if (isset($_SESSION['add-category-success'])): ?>
+    <?php if (isset($_SESSION['add-category-success'])): ?>
 
         <script>
 
@@ -257,26 +294,26 @@ if (!$categories) {
 
 
     <?php endif; ?>
-    <script src="assets/js/sweetalert.js"></script>
+    <script src="account/assets/js/sweetalert.js"></script>
 
     <!-- Bootstrap bundle js -->
-    <script src="assets/libs/bootstrap/js/bootstrap.bundle.min.js"></script>
+    <script src="account/assets/libs/bootstrap/js/bootstrap.bundle.min.js"></script>
 
     <!-- Layouts main js -->
-    <script src="assets/libs/jquery/jquery.min.js"></script>
+    <script src="account/assets/libs/jquery/jquery.min.js"></script>
 
     <!-- Metimenu js -->
-    <script src="assets/libs/metismenu/metisMenu.min.js"></script>
+    <script src="account/assets/libs/metismenu/metisMenu.min.js"></script>
 
     <!-- simplebar js -->
-    <script src="assets/libs/simplebar/simplebar.min.js"></script>
+    <script src="account/assets/libs/simplebar/simplebar.min.js"></script>
 
-    <script src="assets/libs/eva-icons/eva.min.js"></script>
+    <script src="account/assets/libs/eva-icons/eva.min.js"></script>
 
     <!-- Scroll Top init -->
-    <script src="assets/js/scroll-top.init.js"></script>
+    <script src="account/assets/js/scroll-top.init.js"></script>
     <!-- App js -->
-    <script src="assets/js/app.js"></script>
+    <script src="account/assets/js/app.js"></script>
 
 </body>
 

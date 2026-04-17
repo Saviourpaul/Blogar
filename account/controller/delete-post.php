@@ -1,5 +1,16 @@
 <?php
-include '../config/database.php';
+
+require_once __DIR__ . '/../includes/helpers.php';
+
+if (session_status() === PHP_SESSION_NONE) {
+    session_start();
+}
+
+if (!isSettingEnabled($connection, 'enable_delete_post', false)) {
+    $_SESSION['delete-post'] = "Delete post is currently disabled in settings.";
+    header("Location: managePost");
+    exit();
+}
 
 if (!isset($_GET['id'])) {
     die("Invalid request");
@@ -18,10 +29,11 @@ if ($result->num_rows !== 1) {
 }
 
 $post = $result->fetch_assoc();
+$title = $post['title'] ?? 'selected';
 
 // Delete thumbnail safely
 if (!empty($post['thumbnail'])) {
-    $thumbnail = '../images/' . $post['thumbnail'];
+    $thumbnail = 'account/uploads/' . $post['thumbnail'];
     if (file_exists($thumbnail)) {
         unlink($thumbnail);
     }
@@ -37,6 +49,6 @@ if ($stmt->affected_rows === 1) {
 } else {
     $_SESSION['delete-post'] = "Failed to delete post.";
 }
-header("Location: ../managePost.php");
+header("Location: managePost");
 exit();
 

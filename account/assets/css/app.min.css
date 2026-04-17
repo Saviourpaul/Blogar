@@ -1,3 +1,4 @@
+@charset "UTF-8";
 /*!***********************************************************************************************************************************************!*\
   !*** css ./node_modules/css-loader/dist/cjs.js!./node_modules/sass-loader/dist/cjs.js??ruleSet[1].rules[0].use[2]!./src/assets/scss/app.scss ***!
   \***********************************************************************************************************************************************/
@@ -9,7 +10,6 @@
 /*!***************************************************************************************************************************************************!*\
   !*** css ./node_modules/css-loader/dist/cjs.js!./node_modules/sass-loader/dist/cjs.js??ruleSet[1].rules[0].use[2]!./src/assets/scss/app.scss (2) ***!
   \***************************************************************************************************************************************************/
-@charset "UTF-8";
 /****************************************************
 Template Name: Aquiry - Admin & Dashboard Template
 Author: Codebucks
@@ -4829,6 +4829,7 @@ input[type=range]:disabled::-webkit-slider-thumb {
   -o-transform: translateZ(0);
   transform: translateZ(0);
   -webkit-mask-image: -webkit-radial-gradient(circle, white 100%, black 100%);
+  mask-image: radial-gradient(circle, white 100%, black 100%);
 }
 
 .waves-button,
@@ -4885,6 +4886,7 @@ input[type=range]:disabled::-webkit-slider-thumb {
 
 .waves-float {
   -webkit-mask-image: none;
+  mask-image: none;
   -webkit-box-shadow: 0px 1px 1.5px 1px rgba(0, 0, 0, 0.12);
   box-shadow: 0px 1px 1.5px 1px rgba(0, 0, 0, 0.12);
   -webkit-transition: all 300ms;
@@ -4963,6 +4965,7 @@ input[type=range]:disabled::-webkit-slider-thumb {
   transform: translateY(40px);
   transition: all 200ms linear;
   background-color: rgba(var(--bs-primary-rgb), 0.1);
+  -webkit-backdrop-filter: blur(3px);
   backdrop-filter: blur(3px);
 }
 
@@ -7208,3 +7211,17 @@ s .rich-list-append {
   color: var(--bs-danger);
   margin-top: 5px;
 }
+.mdi, .list-inline-item span {
+    transition: all 0.3s ease;
+    cursor: pointer;
+}
+
+.interaction-active {
+    transform: scale(1.2);
+}
+
+.list-inline-item {
+    -webkit-user-select: none;
+    user-select: none;
+}
+

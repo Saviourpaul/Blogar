@@ -1,9 +1,9 @@
 <?php
-session_start();
-require '../config/database.php';
+
+require_once __DIR__ . '/../includes/helpers.php';
 
 if(!isset($_POST['submit'])) {
-    header('location: ../AddUser.php');
+    header('location: AddUser');
     exit;
 }
 
@@ -54,14 +54,14 @@ if(!empty($errors)) {
     $_SESSION['add-user'] = implode(",", $errors);
     $_SESSION['add-user-data'] = $_POST;
 
-    header('location: ../AddUser.php');
+    header('location: AddUser');
     exit;
 }
 
 $extension = pathinfo($avatar['name'], PATHINFO_EXTENSION);
 $avatar_name = uniqid('avatar_',true).'.'.$extension;
 
-$destination = '../uploads/'.$avatar_name;
+$destination = 'account/uploads/'.$avatar_name;
 
 move_uploaded_file($avatar['tmp_name'],$destination);
 
@@ -79,7 +79,7 @@ $result = $stmt->get_result();
 if($result->num_rows > 0){
 
     $_SESSION['add-user'] = "Username or Email already exists";
-    header('location: ../AddUser.php');
+    header('location: AddUser');
     exit;
 }
 
@@ -105,7 +105,55 @@ $stmt->execute();
 $_SESSION['add-user-success'] =
 "New user $firstname $lastname added successfully";
 
-header('location: ../ManageUser.php');
+$fullName = trim($firstname . ' ' . $lastname);
+
+sendEventEmail($connection, 'welcome_email', $email, $fullName, [
+    'firstname' => $firstname,
+    'fullname' => $fullName,
+    'email' => $email,
+    'username' => $username
+]);
+
+createNotification(
+    $connection,
+    (int) $stmt->insert_id,
+    'welcome',
+    'Welcome to IdeaHub',
+    'Your account is ready. Start exploring ideas, posts, and collaborations.',
+    'dashboard'
+);
+
+sendAdminEventEmail($connection, 'admin_new_user', [
+    'firstname' => $firstname,
+    'fullname' => $fullName,
+    'email' => $email,
+    'username' => $username,
+    'actor_name' => $fullName
+]);
+
+foreach (getAdminNotificationRecipients($connection) as $recipient) {
+    $adminStmt = $connection->prepare("SELECT id FROM users WHERE email = ? LIMIT 1");
+    if ($adminStmt) {
+        $adminStmt->bind_param('s', $recipient['email']);
+        $adminStmt->execute();
+        $adminRow = $adminStmt->get_result()->fetch_assoc();
+        $adminStmt->close();
+
+        if (!empty($adminRow['id'])) {
+            createNotification(
+                $connection,
+                (int) $adminRow['id'],
+                'admin_new_user',
+                'New user signup',
+                $fullName . ' just created a new account.',
+                'ManageUser',
+                (int) $stmt->insert_id
+            );
+        }
+    }
+}
+
+header('location: ManageUser');
 exit;
            
 

@@ -4,19 +4,19 @@ require 'includes/header.php';
 
 
 if (!isset($_SESSION['user-id'])) {
-    header("Location: auth/signin.php");
+    header("Location: signin");
     exit();
 }
 
 if (!isset($_GET['id'])) {
-    header('Location: ../ManageCategory.php');
+    header('Location: manageCategory');
     exit();
 }
 
 $id = filter_input(INPUT_GET, 'id', FILTER_VALIDATE_INT);
 
 if (!$id) {
-    header('Location: ../ManageCategory.php');
+    header('Location: .manageCategory');
     exit();
 }
 
@@ -34,7 +34,7 @@ $result = mysqli_stmt_get_result($stmt);
 $category = mysqli_fetch_assoc($result);
 
 if (!$category) {
-    header('Location: ../ManageCategory.php');
+    header('Location: manageCategory');
     exit();
 }
 ?>
@@ -78,7 +78,7 @@ if (!$category) {
                                     <div class="row g-4">
 
                                        
-                                        <form action="controller/edit-category-logic.php" 
+                                        <form action="edit-category-logic" 
                                             method="POST">
                                             <div class="col-lg-8">
                                                 <div class="row g-4">

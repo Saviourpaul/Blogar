@@ -3,7 +3,7 @@ require 'includes/header.php';
 
 
 if (!isset($_SESSION['user-id'])) {
-    header("Location: auth/signin.php");
+    header("Location: signin");
     exit();
 }
 
@@ -17,9 +17,25 @@ $users = mysqli_query($connection, $query);
 
 
 
+$items_per_page = 10;
+$current_page = isset($_GET['page']) ? (int)$_GET['page'] : 1;
+if ($current_page < 1) $current_page = 1;
 
+$offset = ($current_page - 1) * $items_per_page;
 
+$total_query = mysqli_query($connection, "SELECT COUNT(*) as total FROM users");
+$total_rows = mysqli_fetch_assoc($total_query)['total'];
+$total_pages = ceil($total_rows / $items_per_page);
+
+$query = "SELECT * FROM users ORDER BY id DESC LIMIT $items_per_page OFFSET $offset";
+$users = mysqli_query($connection, $query);
+
+$start_item = $offset + 1;
+$end_item = min($offset + $items_per_page, $total_rows);
+if ($total_rows == 0) $start_item = 0;
 ?>
+
+
 
 
 
@@ -123,7 +139,7 @@ $users = mysqli_query($connection, $query);
                                                     <a 
                                                         class="d-flex align-items-center gap-2 text-body">
                                                         <span class="avatar avatar-sm avatar-circle overflow-hidden">
-                                                            <img src="./uploads/<?= $user['avatar'] ?>" alt="Avatar Image"
+                                                            <img src="account/uploads/<?= $user['avatar'] ?>" alt="Avatar Image"
                                                                 class="size-7">
                                                         </span>
                                                         <p class="fw-semibold mb-0">
@@ -135,17 +151,18 @@ $users = mysqli_query($connection, $query);
                                                 <td><?= $user['username'] ?></td>
                                                 <td>
                                                      
-                                                    <a href="UserProfile.php?id=<?= $user['id'] ?>"
-                                                    class="btn sm"><button type="button"
+                                                    <a href="UserProfile?id=<?= $user['id'] ?>"
+                                                    class="btn sm"><button id="blockui-trigger-10" type="button"
                                                         class="btn btn-sm btn-secondary"
                                                           class="btn btn-sm-label-view btn-icon">
                                                         <i class="sm bi bi-eye"></i>
                                                         </button>
                                                     </a>
                                                 </td>
+                                                
 
                                                 <td>
-                                                    <a href="controller/delete-user.php?id=<?= $user['id'] ?>"
+                                                    <a href="delete-user?id=<?= $user['id'] ?>"
                                                         class="btn sm"><button type="button"
                                                             class="btn btn-sm btn-label-danger btn-icon "><i
                                                                 data-eva="trash-2-outline"></i></button>
@@ -168,28 +185,36 @@ $users = mysqli_query($connection, $query);
 
                             </div>
 
-                            <div class="d-flex align-items-center gap-4 justify-content-between mt-3 flex-wrap">
-                                <div>
-                                    <p class="mb-0 text-muted">Showing <span class="fw-semibold text-body">1</span> -
-                                        <span class="fw-semibold text-body">10</span> of <span
-                                            class="fw-semibold text-body">50</span> Results
-                                    </p>
-                                </div>
-                                <ul class="pagination pagination-arrow mb-0 ms-auto">
-                                    <li class="page-item"><a class="page-link page-prev" href="#!"><i
-                                                class="mdi mdi-chevron-left align-middle pagination-left"></i><i
-                                                class="mdi mdi-chevron-right align-middle pagination-right"></i><span
-                                                class="visually-hidden">Previous</span></a></li>
-                                    <li class="page-item"><a class="page-link active" href="#!">1</a></li>
-                                    <li class="page-item"><a class="page-link" href="#!">2</a></li>
-                                    <li class="page-item"><a class="page-link" href="#!">3</a></li>
-                                    <li class="page-item"><a class="page-link" href="#!">4</a></li>
-                                    <li class="page-item"><a class="page-link page-next" href="#!"><i
-                                                class="mdi mdi-chevron-right pagination-right align-middle"></i><i
-                                                class="mdi mdi-chevron-left pagination-left align-middle"></i><span
-                                                class="visually-hidden">Next</span></a></li>
-                                </ul>
-                            </div>
+                             <div class="d-flex align-items-center gap-4 justify-content-between mt-4 flex-wrap">
+                                        <div>
+                                            <p class="mb-0 text-muted">Showing
+                                                <span class="fw-semibold text-body"><?= $start_item ?></span> -
+                                                <span class="fw-semibold text-body"><?= $end_item ?></span> 
+                                            </p>
+                                        </div>
+
+                                        <ul class="pagination pagination-arrow mb-0 ms-auto">
+                                            <li class="page-item <?= ($current_page <= 1) ? 'disabled' : '' ?>">
+                                                <a class="page-link page-prev" href="?page=<?= $current_page - 1 ?>">
+                                                    <i class="mdi mdi-chevron-left align-middle pagination-left"></i>
+                                                    <span class="visually-hidden">Previous</span>
+                                                </a>
+                                            </li>
+
+                                            <?php for ($i = 1; $i <= $total_pages; $i++): ?>
+                                                <li class="page-item <?= ($i == $current_page) ? 'active' : '' ?>">
+                                                    <a class="page-link" href="?page=<?= $i ?>"><?= $i ?></a>
+                                                </li>
+                                            <?php endfor; ?>
+
+                                            <li class="page-item <?= ($current_page >= $total_pages) ? 'disabled' : '' ?>">
+                                                <a class="page-link page-next" href="?page=<?= $current_page + 1 ?>">
+                                                    <i class="mdi mdi-chevron-right pagination-right align-middle"></i>
+                                                    <span class="visually-hidden">Next</span>
+                                                </a>
+                                            </li>
+                                        </ul>
+                                    </div>
                         </div>
                     </div>
 
@@ -250,27 +275,28 @@ document.addEventListener("DOMContentLoaded", function(){
 
 
   
-        <script src="assets/js/sweetalert.js"></script>
+        <script src="account/assets/js/sweetalert.js"></script>
 
 
     <!-- Bootstrap bundle js -->
-    <script src="assets/libs/bootstrap/js/bootstrap.bundle.min.js"></script>
+    <script src="account/assets/libs/bootstrap/js/bootstrap.bundle.min.js"></script>
 
     <!-- Layouts main js -->
-    <script src="assets/libs/jquery/jquery.min.js"></script>
+    <script src="account/assets/libs/jquery/jquery.min.js"></script>
 
     <!-- Metimenu js -->
-    <script src="assets/libs/metismenu/metisMenu.min.js"></script>
+    <script src="account/assets/libs/metismenu/metisMenu.min.js"></script>
 
     <!-- simplebar js -->
-    <script src="assets/libs/simplebar/simplebar.min.js"></script>
+    <script src="account/assets/libs/simplebar/simplebar.min.js"></script>
 
-    <script src="assets/libs/eva-icons/eva.min.js"></script>
+    <script src="account/assets/libs/eva-icons/eva.min.js"></script>
 
     <!-- Scroll Top init -->
-    <script src="assets/js/scroll-top.init.js"></script>
+    <script src="account/assets/js/scroll-top.init.js"></script>
     <!-- App js -->
-    <script src="assets/js/app.js"></script>
+    <script src="account/assets/js/app.js"></script>
+    
 
 </body>
 

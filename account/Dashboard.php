@@ -1,366 +1,371 @@
-
-<?php $pageTitle = 'Dashboard';
-  require 'includes/header.php';
-require_once  'includes/helpers.php';
-
-
-     
-
-
+<?php
+$pageTitle = 'Dashboard';
+require 'includes/header.php';
+require_once 'includes/helpers.php';
 
 if (!isset($_SESSION['user-id'])) {
-    header("Location: signin.php");
+    header("Location: signin");
     exit();
 }
 
-$totalUsers = getCount('users', $connection);
-$totalCategories = getCount('categories', $connection);
-$totalPosts = getCount('posts', $connection);
+$currentUserId = (int) ($_SESSION['user-id'] ?? 0);
+$isAdmin = !empty($_SESSION['is_admin']);
+$displayName = trim(($user['firstname'] ?? '') . ' ' . ($user['lastname'] ?? ''));
+if ($displayName === '') {
+    $displayName = $user['username'] ?? 'there';
+}
 
+function dashboardFetchValue($conn, $sql, $types = '', $params = [])
+{
+    $stmt = $conn->prepare($sql);
+    if (!$stmt) {
+        return 0;
+    }
+    if ($types !== '' && $params) {
+        $stmt->bind_param($types, ...$params);
+    }
+    $stmt->execute();
+    $result = $stmt->get_result();
+    $row = $result ? $result->fetch_row() : [0];
+    $stmt->close();
+    return (int) ($row[0] ?? 0);
+}
 
+function dashboardFetchRows($conn, $sql, $types = '', $params = [])
+{
+    $stmt = $conn->prepare($sql);
+    if (!$stmt) {
+        return [];
+    }
+    if ($types !== '' && $params) {
+        $stmt->bind_param($types, ...$params);
+    }
+    $stmt->execute();
+    $result = $stmt->get_result();
+    $rows = $result ? $result->fetch_all(MYSQLI_ASSOC) : [];
+    $stmt->close();
+    return $rows;
+}
 
+function dashboardMonthlySeries($conn, $table, $dateColumn, $whereSql = '', $types = '', $params = [], $monthsBack = 6)
+{
+    $labels = [];
+    $map = [];
+    for ($i = $monthsBack - 1; $i >= 0; $i--) {
+        $key = date('Y-m', strtotime("-$i months"));
+        $labels[] = date('M', strtotime($key . '-01'));
+        $map[$key] = 0;
+    }
+
+    $sql = "SELECT DATE_FORMAT($dateColumn, '%Y-%m') AS m, COUNT(*) AS total
+            FROM $table
+            WHERE $dateColumn >= DATE_SUB(CURDATE(), INTERVAL " . (int) ($monthsBack - 1) . " MONTH)";
+    if ($whereSql !== '') {
+        $sql .= " AND $whereSql";
+    }
+    $sql .= " GROUP BY m ORDER BY m ASC";
+
+    foreach (dashboardFetchRows($conn, $sql, $types, $params) as $row) {
+        if (isset($map[$row['m']])) {
+            $map[$row['m']] = (int) $row['total'];
+        }
+    }
+
+    return ['labels' => $labels, 'values' => array_values($map)];
+}
+
+$stats = [];
+$trendLabels = [];
+$trendSeries = [];
+$engagementSeries = [];
+$engagementLabels = ['Likes', 'Dislikes', 'Shares'];
+$quickLinks = [];
+$activityRows = [];
+$activityTitle = '';
+$tableRows = [];
+$tableTitle = '';
+$recentNotifications = getUserNotifications($connection, $currentUserId, 5);
+$unreadNotifications = getUnreadNotificationCount($connection, $currentUserId);
+
+if ($isAdmin) {
+    $stats = [
+        ['label' => 'Users', 'value' => dashboardFetchValue($connection, "SELECT COUNT(*) FROM users"), 'icon' => 'mdi-account-group-outline', 'tone' => 'primary'],
+        ['label' => 'Posts', 'value' => dashboardFetchValue($connection, "SELECT COUNT(*) FROM posts"), 'icon' => 'mdi-file-document-outline', 'tone' => 'success'],
+        ['label' => 'Comments', 'value' => dashboardFetchValue($connection, "SELECT COUNT(*) FROM comments"), 'icon' => 'mdi-comment-processing-outline', 'tone' => 'warning'],
+        ['label' => 'Followers', 'value' => dashboardFetchValue($connection, "SELECT COUNT(*) FROM followers"), 'icon' => 'mdi-account-heart-outline', 'tone' => 'info']
+    ];
+
+    $postTrend = dashboardMonthlySeries($connection, 'posts', 'created_at');
+    $userTrend = dashboardMonthlySeries($connection, 'users', 'created_at');
+    $commentTrend = dashboardMonthlySeries($connection, 'comments', 'created_at');
+    $trendLabels = $postTrend['labels'];
+    $trendSeries = [
+        ['name' => 'Posts', 'data' => $postTrend['values']],
+        ['name' => 'Users', 'data' => $userTrend['values']],
+        ['name' => 'Comments', 'data' => $commentTrend['values']]
+    ];
+
+    $engagementSeries = [
+        dashboardFetchValue($connection, "SELECT COUNT(*) FROM post_interactions WHERE interaction_type='like'"),
+        dashboardFetchValue($connection, "SELECT COUNT(*) FROM post_interactions WHERE interaction_type='dislike'"),
+        dashboardFetchValue($connection, "SELECT COUNT(*) FROM post_interactions WHERE interaction_type='share'")
+    ];
+
+    $activityTitle = 'Recent Users';
+    $activityRows = dashboardFetchRows($connection, "SELECT id, firstname, lastname, username, avatar, status, created_at FROM users ORDER BY created_at DESC LIMIT 5");
+    $tableTitle = 'Recent Posts';
+    $tableRows = dashboardFetchRows($connection, "SELECT p.id, p.title, p.created_at, u.firstname, u.lastname, c.title AS category_title FROM posts p LEFT JOIN users u ON u.id = p.author_id LEFT JOIN categories c ON c.id = p.category_id ORDER BY p.created_at DESC LIMIT 6");
+    $quickLinks = [
+        ['label' => 'Manage Users', 'href' => 'ManageUser', 'icon' => 'mdi-account-cog-outline'],
+        ['label' => 'Manage Posts', 'href' => 'managePost', 'icon' => 'mdi-post-outline'],
+        ['label' => 'Categories', 'href' => 'manageCategory', 'icon' => 'mdi-shape-outline'],
+        ['label' => 'Settings', 'href' => 'setting', 'icon' => 'mdi-cog-outline']
+    ];
+} else {
+    $stats = [
+        ['label' => 'My Posts', 'value' => dashboardFetchValue($connection, "SELECT COUNT(*) FROM posts WHERE author_id = ?", 'i', [$currentUserId]), 'icon' => 'mdi-file-document-outline', 'tone' => 'primary'],
+        ['label' => 'My Comments', 'value' => dashboardFetchValue($connection, "SELECT COUNT(*) FROM comments WHERE user_id = ?", 'i', [$currentUserId]), 'icon' => 'mdi-comment-processing-outline', 'tone' => 'success'],
+        ['label' => 'Followers', 'value' => getFollowerCount($connection, $currentUserId), 'icon' => 'mdi-account-heart-outline', 'tone' => 'warning'],
+        ['label' => 'Following', 'value' => getFollowingCount($connection, $currentUserId), 'icon' => 'mdi-account-arrow-right-outline', 'tone' => 'info']
+    ];
+
+    $postTrend = dashboardMonthlySeries($connection, 'posts', 'created_at', 'author_id = ?', 'i', [$currentUserId]);
+    $commentTrend = dashboardMonthlySeries($connection, 'comments', 'created_at', 'user_id = ?', 'i', [$currentUserId]);
+    $trendLabels = $postTrend['labels'];
+    $trendSeries = [
+        ['name' => 'My Posts', 'data' => $postTrend['values']],
+        ['name' => 'My Comments', 'data' => $commentTrend['values']]
+    ];
+
+    $engagementSeries = [
+        dashboardFetchValue($connection, "SELECT COUNT(*) FROM post_interactions pi INNER JOIN posts p ON p.id = pi.post_id WHERE p.author_id = ? AND pi.interaction_type='like'", 'i', [$currentUserId]),
+        dashboardFetchValue($connection, "SELECT COUNT(*) FROM post_interactions pi INNER JOIN posts p ON p.id = pi.post_id WHERE p.author_id = ? AND pi.interaction_type='dislike'", 'i', [$currentUserId]),
+        dashboardFetchValue($connection, "SELECT COUNT(*) FROM post_interactions pi INNER JOIN posts p ON p.id = pi.post_id WHERE p.author_id = ? AND pi.interaction_type='share'", 'i', [$currentUserId])
+    ];
+
+    $activityTitle = 'Recent Notifications';
+    $activityRows = $recentNotifications;
+    $tableTitle = 'My Latest Posts';
+    $tableRows = dashboardFetchRows($connection, "SELECT p.id, p.title, p.created_at, c.title AS category_title, (SELECT COUNT(*) FROM comments cm WHERE cm.post_id = p.id) AS comment_count, (SELECT COUNT(*) FROM post_interactions pi WHERE pi.post_id = p.id AND pi.interaction_type = 'like') AS like_count FROM posts p LEFT JOIN categories c ON c.id = p.category_id WHERE p.author_id = ? ORDER BY p.created_at DESC LIMIT 6", 'i', [$currentUserId]);
+    $quickLinks = [
+        ['label' => 'Create Post', 'href' => 'CreatePost', 'icon' => 'mdi-plus-box-outline'],
+        ['label' => 'Manage My Posts', 'href' => 'managePost', 'icon' => 'mdi-folder-edit-outline'],
+        ['label' => 'My Profile', 'href' => 'UserProfile?id=' . $currentUserId, 'icon' => 'mdi-account-outline'],
+        ['label' => 'Notifications', 'href' => 'notifications', 'icon' => 'mdi-bell-outline']
+    ];
+}
 ?>
 
-
+<style>
+    .dashboard-hero{background:radial-gradient(circle at top left,rgba(13,110,253,.2),transparent 28%),radial-gradient(circle at bottom right,rgba(25,135,84,.18),transparent 24%),linear-gradient(135deg,#fff 0%,#f6f9fc 100%);border:1px solid rgba(15,23,42,.08);overflow:hidden}
+    .dashboard-stat-card,.dashboard-panel{border:1px solid rgba(15,23,42,.08);border-radius:1rem;box-shadow:0 16px 40px rgba(15,23,42,.05)}
+    .dashboard-stat-card{transition:transform .2s ease,box-shadow .2s ease}
+    .dashboard-stat-card:hover{transform:translateY(-2px);box-shadow:0 20px 46px rgba(15,23,42,.08)}
+    .dashboard-icon{width:52px;height:52px;border-radius:16px;display:inline-flex;align-items:center;justify-content:center;font-size:1.4rem}
+    .dashboard-quick-link{border:1px solid rgba(15,23,42,.08);border-radius:1rem;padding:1rem;text-decoration:none;color:inherit;background:#fff;transition:all .2s ease}
+    .dashboard-quick-link:hover{border-color:rgba(13,110,253,.28);transform:translateY(-2px)}
+</style>
 
 <body>
-<!-- Begin page -->
 <div id="layout-wrapper">
-
-    <!-- Start topbar -->
-    
-    <!-- End topbar -->
-    <!-- ========== Left Sidebar Start ========== -->
     <?= include 'includes/sidebar.php' ?>
-    <!-- Left Sidebar End -->
     <div class="sidebar-backdrop" id="sidebar-backdrop"></div>
-    <!-- ========== Left Sidebar Start ========== -->
-   
-    <!-- Left Sidebar End -->
     <div class="sidebar-backdrop" id="sidebar-backdrop"></div>
-    <!-- ============================================================== -->
-    <!-- Start right Content here -->
-    <!-- ============================================================== -->
     <div class="main-content">
-
         <div class="page-content">
             <div class="container-fluid">
+                <div class="row"><div class="col-12"><div class="card dashboard-hero shadow-sm mb-4"><div class="card-body p-4 p-lg-5"><div class="row align-items-center g-4"><div class="col-lg-8"><span class="badge rounded-pill bg-primary-subtle text-primary px-3 py-2 mb-3"><?= $isAdmin ? 'Admin Analytics' : 'Personal Workspace' ?></span><h2 class="mb-2">Welcome back, <?= htmlspecialchars($displayName, ENT_QUOTES, 'UTF-8') ?></h2><p class="text-muted mb-0"><?= $isAdmin ? 'Track platform growth, publishing activity, and community engagement from one place.' : 'Monitor your publishing momentum, followers, and post engagement in one clean view.' ?></p></div><div class="col-lg-4"><div class="row g-3"><div class="col-6"><div class="rounded-4 bg-white border p-3 h-100"><div class="text-muted small mb-1">Unread Notifications</div><div class="fs-3 fw-bold"><?= $unreadNotifications ?></div></div></div><div class="col-6"><div class="rounded-4 bg-white border p-3 h-100"><div class="text-muted small mb-1"><?= $isAdmin ? 'Platform Followers' : 'Total Following' ?></div><div class="fs-3 fw-bold"><?= $isAdmin ? dashboardFetchValue($connection, "SELECT COUNT(*) FROM followers") : getFollowingCount($connection, $currentUserId) ?></div></div></div></div></div></div></div></div></div></div>
 
-                <!-- start page title -->
+                <div class="row g-3 mb-4">
+                    <?php foreach ($stats as $stat): ?>
+                        <div class="col-sm-6 col-xl-3"><div class="card dashboard-stat-card mb-0"><div class="card-body"><div class="d-flex align-items-center justify-content-between mb-3"><div><div class="text-muted small text-uppercase mb-1"><?= htmlspecialchars($stat['label'], ENT_QUOTES, 'UTF-8') ?></div><div class="fs-2 fw-bold"><?= (int) $stat['value'] ?></div></div><div class="dashboard-icon bg-<?= htmlspecialchars($stat['tone'], ENT_QUOTES, 'UTF-8') ?>-subtle text-<?= htmlspecialchars($stat['tone'], ENT_QUOTES, 'UTF-8') ?>"><i class="mdi <?= htmlspecialchars($stat['icon'], ENT_QUOTES, 'UTF-8') ?>"></i></div></div></div></div></div>
+                    <?php endforeach; ?>
+                </div>
+
+                <div class="row g-4 mb-4">
+                    <div class="col-xl-8">
+                        <div class="card dashboard-panel mb-0">
+                            <div class="card-header bg-transparent border-0 pt-4 px-4">
+                                <h5 class="card-title mb-1"><?= $isAdmin ? 'Growth Overview' : 'Publishing Momentum' ?></h5>
+                                <p class="text-muted mb-0 small">Last 6 months activity</p>
+                            </div>
+                            <div class="card-body px-4 pb-4"><div id="dashboardTrendChart" style="min-height:330px;"></div></div>
+                        </div>
+                    </div>
+                    <div class="col-xl-4">
+                        <div class="card dashboard-panel mb-0">
+                            <div class="card-header bg-transparent border-0 pt-4 px-4">
+                                <h5 class="card-title mb-1"><?= $isAdmin ? 'Platform Engagement' : 'My Engagement Mix' ?></h5>
+                                <p class="text-muted mb-0 small">Likes, dislikes, and shares</p>
+                            </div>
+                            <div class="card-body px-4 pb-4"><div id="dashboardEngagementChart" style="min-height:330px;"></div></div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="row g-4 mb-4">
+                    <div class="col-xl-4">
+                        <div class="card dashboard-panel h-100 mb-0">
+                            <div class="card-header bg-transparent border-0 pt-4 px-4">
+                                <h5 class="card-title mb-1">Quick Actions</h5>
+                                <p class="text-muted mb-0 small">Jump into common tasks</p>
+                            </div>
+                            <div class="card-body px-4 pb-4">
+                                <div class="row g-3">
+                                    <?php foreach ($quickLinks as $link): ?>
+                                        <div class="col-12">
+                                            <a href="<?= htmlspecialchars($link['href'], ENT_QUOTES, 'UTF-8') ?>" class="dashboard-quick-link d-flex align-items-center justify-content-between">
+                                                <div class="d-flex align-items-center gap-3">
+                                                    <span class="dashboard-icon bg-light text-primary"><i class="mdi <?= htmlspecialchars($link['icon'], ENT_QUOTES, 'UTF-8') ?>"></i></span>
+                                                    <span class="fw-semibold"><?= htmlspecialchars($link['label'], ENT_QUOTES, 'UTF-8') ?></span>
+                                                </div>
+                                                <i class="mdi mdi-chevron-right text-muted"></i>
+                                            </a>
+                                        </div>
+                                    <?php endforeach; ?>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="col-xl-8">
+                        <div class="card dashboard-panel h-100 mb-0">
+                            <div class="card-header bg-transparent border-0 pt-4 px-4">
+                                <h5 class="card-title mb-1"><?= htmlspecialchars($activityTitle, ENT_QUOTES, 'UTF-8') ?></h5>
+                                <p class="text-muted mb-0 small"><?= $isAdmin ? 'Newest members joining the community' : 'Your latest activity alerts' ?></p>
+                            </div>
+                            <div class="card-body px-4 pb-4">
+                                <?php if (empty($activityRows)): ?>
+                                    <div class="text-center py-5 text-muted"><i class="mdi mdi-database-off-outline fs-1 d-block mb-2"></i>Nothing to show yet.</div>
+                                <?php elseif ($isAdmin): ?>
+                                    <div class="d-grid gap-3">
+                                        <?php foreach ($activityRows as $member): ?>
+                                            <a href="UserProfile?id=<?= (int) $member['id'] ?>" class="text-reset text-decoration-none border rounded-4 p-3 d-flex align-items-center justify-content-between gap-3">
+                                                <div class="d-flex align-items-center gap-3">
+                                                    <span class="avatar avatar-md avatar-circle overflow-hidden">
+                                                        <?php if (!empty($member['avatar'])): ?>
+                                                            <img src="account/uploads/<?= htmlspecialchars($member['avatar'], ENT_QUOTES, 'UTF-8') ?>" class="img-fluid" alt="<?= htmlspecialchars(trim(($member['firstname'] ?? '') . ' ' . ($member['lastname'] ?? '')), ENT_QUOTES, 'UTF-8') ?>">
+                                                        <?php else: ?>
+                                                            <span class="avatar-title bg-soft-primary text-primary fw-semibold"><?= htmlspecialchars(strtoupper(substr(trim(($member['firstname'] ?? '') . ' ' . ($member['lastname'] ?? $member['username'] ?? 'A')), 0, 1)), ENT_QUOTES, 'UTF-8') ?></span>
+                                                        <?php endif; ?>
+                                                    </span>
+                                                    <div><div class="fw-semibold"><?= htmlspecialchars(trim(($member['firstname'] ?? '') . ' ' . ($member['lastname'] ?? '')) ?: ($member['username'] ?? 'Member'), ENT_QUOTES, 'UTF-8') ?></div><div class="text-muted small">@<?= htmlspecialchars($member['username'] ?? 'member', ENT_QUOTES, 'UTF-8') ?></div></div>
+                                                </div>
+                                                <div class="text-end"><div class="badge bg-light text-dark border mb-1"><?= htmlspecialchars(ucfirst((string) ($member['status'] ?? 'active')), ENT_QUOTES, 'UTF-8') ?></div><div class="small text-muted"><?= htmlspecialchars(getRelativeTime($member['created_at']), ENT_QUOTES, 'UTF-8') ?></div></div>
+                                            </a>
+                                        <?php endforeach; ?>
+                                    </div>
+                                <?php else: ?>
+                                    <div class="d-grid gap-3">
+                                        <?php foreach ($activityRows as $notification): ?>
+                                            <?php $notificationMeta = getNotificationMeta($notification['type'] ?? ''); ?>
+                                            <a href="<?= htmlspecialchars($notification['link'] ?: '#', ENT_QUOTES, 'UTF-8') ?>" class="text-reset text-decoration-none border rounded-4 p-3 d-flex align-items-start gap-3">
+                                                <div class="avatar avatar-sm <?= htmlspecialchars($notificationMeta['avatar'], ENT_QUOTES, 'UTF-8') ?>"><span class="rounded fs-18"><i class="mdi <?= htmlspecialchars($notificationMeta['icon'], ENT_QUOTES, 'UTF-8') ?>"></i></span></div>
+                                                <div class="flex-grow-1"><div class="fw-semibold"><?= htmlspecialchars($notification['title'], ENT_QUOTES, 'UTF-8') ?></div><div class="text-muted small mb-1"><?= htmlspecialchars($notification['message'], ENT_QUOTES, 'UTF-8') ?></div><div class="small text-muted"><?= htmlspecialchars(getRelativeTime(is_numeric($notification['created_value']) ? date('Y-m-d H:i:s', (int) $notification['created_value']) : $notification['created_value']), ENT_QUOTES, 'UTF-8') ?></div></div>
+                                            </a>
+                                        <?php endforeach; ?>
+                                    </div>
+                                <?php endif; ?>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
                 <div class="row">
                     <div class="col-12">
-                        
-                    </div>
-                </div>
-                <!-- end page title -->
-                <div class="row">
-                    <div class="col-xl-8 col-xxl-9">
-                        <div class="row">
-                            <div class="col-xxl-5">
-                              
+                        <div class="card dashboard-panel mb-0">
+                            <div class="card-header bg-transparent border-0 pt-4 px-4">
+                                <h5 class="card-title mb-1"><?= htmlspecialchars($tableTitle, ENT_QUOTES, 'UTF-8') ?></h5>
+                                <p class="text-muted mb-0 small"><?= $isAdmin ? 'Most recent publishing activity across the platform' : 'Your latest published ideas' ?></p>
                             </div>
-                            <div class="col-xxl-7">
-                                <div class="card">
-                                   
-                                    
-                                </div>
-                            </div>
-                            <div class="col-md-6 col-xxl-3">
-                                <div class="card shadow-sm border-0">
-                                    <div class="card-body">
-                                        <div class="d-flex align-items-start justify-content-between mb-6">
-                                            <div>
-                                                <h6 class="mb-3">Total Post</h6>
-                                                <p class="text-muted mb-0"><?= $totalPosts ?></p>
-                                            </div>
-                                            <div class="position-relative d-inline-block avatar-progress progress-75">
-                                                <svg class="position-absolute top-0 start-0 progress-svg">
-                                                    <circle class="progress-bg"></circle>
-                                                    <circle class="progress-circle stroke-info"></circle>
-                                                </svg>
-                                                <div class="avatar size-11 avatar-label-info avatar-circle">
-                                                    <i data-eva="shopping-bag-outline"></i>
-                                                </div>
-                                            </div>
-                                        </div>
-                                        <div class="d-flex justify-content-between align-items-center">
-                                            <h4 class="mb-0 fw-medium"><?= $totalPosts ?></h4>
-                                            <div class="dropdown">
-                                                <a href="#!" class="text-muted" data-bs-toggle="dropdown" aria-label="more"><i data-eva="more-horizontal-outline" class="size-4"></i></a>
-                                                <ul class="dropdown-menu dropdown-menu-animated dropdown-menu-end">
-                                                    <li><a class="dropdown-item" href="#!">Today</a></li>
-                                                    <li><a class="dropdown-item" href="#!">This Week</a></li>
-                                                    <li><a class="dropdown-item" href="#!">This Month</a></li>
-                                                </ul>
-                                            </div>
-                                        </div>
+                            <div class="card-body px-4 pb-4">
+                                <?php if (empty($tableRows)): ?>
+                                    <div class="text-center py-5 text-muted"><i class="mdi mdi-notebook-outline fs-1 d-block mb-2"></i>Nothing to display yet.</div>
+                                <?php else: ?>
+                                    <div class="table-responsive">
+                                        <table class="table align-middle mb-0">
+                                            <thead class="table-light">
+                                                <tr>
+                                                    <th>Title</th>
+                                                    <th><?= $isAdmin ? 'Author' : 'Category' ?></th>
+                                                    <th>Created</th>
+                                                    <th><?= $isAdmin ? 'Category' : 'Engagement' ?></th>
+                                                    <th class="text-end">Open</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody>
+                                                <?php foreach ($tableRows as $row): ?>
+                                                    <tr>
+                                                        <td><a href="postOverview?id=<?= (int) $row['id'] ?>" class="text-body fw-semibold"><?= htmlspecialchars($row['title'], ENT_QUOTES, 'UTF-8') ?></a></td>
+                                                        <td><?= $isAdmin ? htmlspecialchars(trim(($row['firstname'] ?? '') . ' ' . ($row['lastname'] ?? '')) ?: 'Unknown', ENT_QUOTES, 'UTF-8') : htmlspecialchars($row['category_title'] ?: 'General', ENT_QUOTES, 'UTF-8') ?></td>
+                                                        <td><?= htmlspecialchars(getRelativeTime($row['created_at']), ENT_QUOTES, 'UTF-8') ?></td>
+                                                        <td>
+                                                            <?php if ($isAdmin): ?>
+                                                                <?= htmlspecialchars($row['category_title'] ?: 'General', ENT_QUOTES, 'UTF-8') ?>
+                                                            <?php else: ?>
+                                                                <span class="text-muted small"><i class="mdi mdi-comment-outline me-1"></i><?= (int) ($row['comment_count'] ?? 0) ?> <i class="mdi mdi-thumb-up-outline ms-2 me-1"></i><?= (int) ($row['like_count'] ?? 0) ?></span>
+                                                            <?php endif; ?>
+                                                        </td>
+                                                        <td class="text-end"><a href="postOverview?id=<?= (int) $row['id'] ?>" class="btn btn-sm btn-light border">View</a></td>
+                                                    </tr>
+                                                <?php endforeach; ?>
+                                            </tbody>
+                                        </table>
                                     </div>
-                                </div>
-                            </div>
-                            <div class="col-md-6 col-xxl-3">
-                                <div class="card shadow-sm border-0">
-                                    <div class="card-body">
-                                        <div class="d-flex align-items-start justify-content-between mb-6">
-                                            <div>
-                                                <h6 class="mb-3">Total Users</h6>
-                                                <p class="text-muted mb-0"><span class="text-success me-1"><i data-eva="trending-up" class="size-4 me-1"></i>5.7%</span> vs last week</p>
-                                            </div>
-                                            <div class="position-relative d-inline-block avatar-progress progress-80">
-                                                <svg class="position-absolute top-0 start-0 progress-svg">
-                                                    <circle class="progress-bg"></circle>
-                                                    <circle class="progress-circle stroke-success"></circle>
-                                                </svg>
-                                                <div class="avatar size-11 avatar-label-success avatar-circle">
-                                                    <i data-eva="credit-card-outline"></i>
-                                                </div>
-                                            </div>
-                                        </div>
-                                        <div class="d-flex justify-content-between align-items-center">
-                                            <h4 class="mb-0 fw-medium"><span data-counter="<?= $totalUsers ?>" data-prefix=""></span> <?= $totalUsers ?></h4>
-                                            <div class="dropdown">
-                                                <a href="#!" class="text-muted" data-bs-toggle="dropdown" aria-label="more"><i data-eva="more-horizontal-outline" class="size-4"></i></a>
-                                                <ul class="dropdown-menu dropdown-menu-animated dropdown-menu-end">
-                                                    <li><a class="dropdown-item" href="#!">Today</a></li>
-                                                    <li><a class="dropdown-item" href="#!">This Week</a></li>
-                                                    <li><a class="dropdown-item" href="#!">This Month</a></li>
-                                                </ul>
-                                            </div>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-                            <div class="col-md-6 col-xxl-3">
-                                <div class="card shadow-sm border-0">
-                                    <div class="card-body">
-                                        <div class="d-flex align-items-start justify-content-between mb-6">
-                                            <div>
-                                                <h6 class="mb-3">comments</h6>
-                                                <p class="text-muted mb-0"><span class="text-danger me-1"><i data-eva="trending-down" class="size-4 me-1"></i>2.1%</span> vs last week</p>
-                                            </div>
-                                            <div class="position-relative d-inline-block avatar-progress progress-60">
-                                                <svg class="position-absolute top-0 start-0 progress-svg">
-                                                    <circle class="progress-bg"></circle>
-                                                    <circle class="progress-circle stroke-warning"></circle>
-                                                </svg>
-                                                <div class="avatar size-11 avatar-label-warning avatar-circle">
-                                                    <i data-eva="shopping-cart-outline"></i>
-                                                </div>
-                                            </div>
-                                        </div>
-                                        <div class="d-flex justify-content-between align-items-center">
-                                            <h4 class="mb-0 fw-medium"><span data-counter="1245"></span> <span class="small fw-normal text-muted">/weekly</span></h4>
-                                            <div class="dropdown">
-                                                <a href="#!" class="text-muted" data-bs-toggle="dropdown" aria-label="more"><i data-eva="more-horizontal-outline" class="size-4"></i></a>
-                                                <ul class="dropdown-menu dropdown-menu-animated dropdown-menu-end">
-                                                    <li><a class="dropdown-item" href="#!">Today</a></li>
-                                                    <li><a class="dropdown-item" href="#!">This Week</a></li>
-                                                    <li><a class="dropdown-item" href="#!">This Month</a></li>
-                                                </ul>
-                                            </div>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-                            <div class="col-md-6 col-xxl-3">
-                                <div class="card shadow-sm border-0">
-                                    <div class="card-body">
-                                        <div class="d-flex align-items-start justify-content-between mb-6">
-                                            <div>
-                                                <h6 class="mb-3">Followers</h6>
-                                                <p class="text-muted mb-0"><span class="text-success me-1"><i data-eva="trending-up" class="size-4 me-1"></i>12%</span> vs last week</p>
-                                            </div>
-                                            <div class="position-relative d-inline-block avatar-progress progress-66">
-                                                <svg class="position-absolute top-0 start-0 progress-svg">
-                                                    <circle class="progress-bg"></circle>
-                                                    <circle class="progress-circle stroke-danger"></circle>
-                                                </svg>
-                                                <div class="avatar size-11 avatar-label-danger avatar-circle">
-                                                    <i data-eva="people-outline"></i>
-                                                </div>
-                                            </div>
-                                        </div>
-                                        <div class="d-flex justify-content-between align-items-center">
-                                            <h4 class="mb-0 fw-medium"><span data-counter="320"></span> <span class="small fw-normal text-muted">/weekly</span></h4>
-                                            <div class="dropdown">
-                                                <a href="#!" class="text-muted" data-bs-toggle="dropdown" aria-label="more"><i data-eva="more-horizontal-outline" class="size-4"></i></a>
-                                                <ul class="dropdown-menu dropdown-menu-animated dropdown-menu-end">
-                                                    <li><a class="dropdown-item" href="#!">Today</a></li>
-                                                    <li><a class="dropdown-item" href="#!">This Week</a></li>
-                                                    <li><a class="dropdown-item" href="#!">This Month</a></li>
-                                                </ul>
-                                            </div>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-                        
-                        </div>
-                    </div>
-                    
-                </div>
-                <div class="row">
-                    <div class="col-xxl-6">
-                        <div class="card">
-                            <div class="card-header border-bottom-0 pb-0">
-                                <h5 class="card-title">Revenue Statistics</h5>
-                                <div class="card-addon">
-                                    <a href="#!" class="btn btn-secondary btn-sm"><i class="mdi mdi-download-outline me-1"></i>Download</a>
-                                </div>
-                            </div>
-                            <div class="card-body">
-                                <div class="d-flex flex-wrap gap-2 align-items-start justify-content-between">
-                                    <div class="d-flex flex-wrap gap-12 align-items-center mb-6">
-                                        <div>
-                                            <p class="mb-2 text-muted">Total Revenue</p>
-                                            <h5 class="mb-0 fw-medium">85,24k</h5>
-                                        </div>
-                                        <div class="d-flex gap-4 align-items-center">
-                                            <div>
-                                                <p class="mb-2 text-muted">Total Refunds</p>
-                                                <h5 class="mb-0 fw-medium">4,125</h5>
-                                            </div>
-                                        </div>
-                                    </div>
-                                    <div class="nav nav-pills nav-group-tabs" id="contact-tab" role="tablist">
-                                        <a class="nav-item nav-link active" id="tab-active" data-bs-toggle="tab" href="#pane-monthly" role="tab" aria-selected="false">Monthly</a>
-                                        <a class="nav-item nav-link" id="tab-inactive" data-bs-toggle="tab" href="#pane-yearly" role="tab" aria-selected="false">Yearly</a>
-                                        <a class="nav-item nav-link" id="tab-all" data-bs-toggle="tab" href="#pane-weekly" role="tab" aria-selected="true">Weekly</a>
-                                    </div>
-                                </div>
-                                <div id="teamProductivityChart" data-colors='["var(--bs-success)", "var(--bs-secondary)"]' class="apex-charts" dir="ltr"></div>
+                                <?php endif; ?>
                             </div>
                         </div>
                     </div>
-                    <div class="col-xl-7 col-xxl-6">
-                        <div class="card">
-                            <div class="card-header">
-                                <h5 class="card-title">Top Selling Products</h5>
-                                <div class="dropdown">
-                                    <a href="#!" class="text-muted dropdown-toggle" data-bs-toggle="dropdown" aria-expanded="false" aria-label="more">Weekly</a>
-                                    <ul class="dropdown-menu dropdown-menu-animated dropdown-menu-end">
-                                        <li><a class="dropdown-item" href="#!">Weekly</a></li>
-                                        <li><a class="dropdown-item" href="#!">Monthly</a></li>
-                                        <li><a class="dropdown-item" href="#!">Yearly</a></li>
-                                    </ul>
-                                </div>
-                            </div>
-                            <div class="card-body">
-                                <div class="table-responsive text-nowrap">
-                                    <table class="table align-middle mb-0">
-                                        <thead class="table-light">
-                                            <tr>
-                                                <th>Product</th>
-                                                <th>Category</th>
-                                                <th>Status</th>
-                                                <th>Units Sold</th>
-                                                <th>Revenue</th>
-                                                <th class="text-end">Actions</th>
-                                            </tr>
-                                        </thead>
-                                        <tbody>
-                                            <tr>
-                                                <td>
-                                                    <a href="apps-product-overview.html" class="text-body fw-medium d-flex align-items-center gap-2">
-                                                        <img src="assets/images/apps/ecommrece/buds.png" alt="Product" class="size-8 rounded">
-                                                        <span>Wireless Earbuds</span>
-                                                    </a>
-                                                </td>
-                                                <td>Electronics</td>
-                                                <td><span class="badge badge-label-success">In Stock</span></td>
-                                                <td>1,240</td>
-                                                <td>$24,800</td>
-                                                <td class="text-end">
-                                                    <button type="button" class="btn btn-sm btn-label-success btn-icon" aria-label="View"><i data-eva="eye-outline"></i></button>
-                                                    <button type="button" class="btn btn-sm btn-label-secondary btn-icon" aria-label="Edit"><i data-eva="edit-2-outline"></i></button>
-                                                    <button type="button" class="btn btn-sm btn-label-danger btn-icon" aria-label="Delete"><i data-eva="trash-2-outline"></i></button>
-                                                </td>
-                                            </tr>
-                                            <tr>
-                                                <td>
-                                                    <a href="apps-product-overview.html" class="text-body fw-medium d-flex align-items-center gap-2">
-                                                        <img src="assets/images/apps/ecommrece/product-2.png" alt="Product" class="size-8 rounded">
-                                                        <span>Smart Watch</span>
-                                                    </a>
-                                                </td>
-                                                <td>Electronics</td>
-                                                <td><span class="badge badge-label-warning">Low Stock</span></td>
-                                                <td>980</td>
-                                                <td>$49,000</td>
-                                                <td class="text-end">
-                                                    <button type="button" class="btn btn-sm btn-label-success btn-icon" aria-label="View"><i data-eva="eye-outline"></i></button>
-                                                    <button type="button" class="btn btn-sm btn-label-secondary btn-icon" aria-label="Edit"><i data-eva="edit-2-outline"></i></button>
-                                                    <button type="button" class="btn btn-sm btn-label-danger btn-icon" aria-label="Delete"><i data-eva="trash-2-outline"></i></button>
-                                                </td>
-                                            </tr>
-                                            <tr>
-                                                <td>
-                                                    <a href="apps-product-overview.html" class="text-body fw-medium d-flex align-items-center gap-2">
-                                                        <img src="assets/images/apps/ecommrece/iphone.png" alt="Product" class="size-8 rounded">
-                                                        <span>iPhone 15 Pro</span>
-                                                    </a>
-                                                </td>
-                                                <td>Electronics</td>
-                                                <td><span class="badge badge-label-success">In Stock</span></td>
-                                                <td>1,100</td>
-                                                <td>$1,320,000</td>
-                                                <td class="text-end">
-                                                    <button type="button" class="btn btn-sm btn-label-success btn-icon" aria-label="View"><i data-eva="eye-outline"></i></button>
-                                                    <button type="button" class="btn btn-sm btn-label-secondary btn-icon" aria-label="Edit"><i data-eva="edit-2-outline"></i></button>
-                                                    <button type="button" class="btn btn-sm btn-label-danger btn-icon" aria-label="Delete"><i data-eva="trash-2-outline"></i></button>
-                                                </td>
-                                            </tr>                  
-                                        </tbody>
-                                    </table>
-                                </div>
-                                
-                            </div>
-                        </div>
-                    </div>
-                    
                 </div>
-            </div><!-- container-fluid -->
-        </div><!-- End Page-content -->
+            </div>
+        </div>
 
-    <?php include 'includes/footer.php' ?> 
-
-    </div><!-- end main content-->
-
+        <?php include 'includes/footer.php' ?>
+    </div>
 </div>
-<!-- END layout-wrapper -->
 
+<script src="account/assets/libs/bootstrap/js/bootstrap.bundle.min.js"></script>
+<script src="account/assets/libs/jquery/jquery.min.js"></script>
+<script src="account/assets/libs/metismenu/metisMenu.min.js"></script>
+<script src="account/assets/libs/simplebar/simplebar.min.js"></script>
+<script src="account/assets/libs/eva-icons/eva.min.js"></script>
+<script src="account/assets/js/scroll-top.init.js"></script>
+<script src="account/assets/libs/select2/js/select2.min.js"></script>
+<script src="account/assets/libs/apexcharts/apexcharts.min.js"></script>
+<script src="account/assets/js/app.js"></script>
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+    const trendEl = document.querySelector('#dashboardTrendChart');
+    const engagementEl = document.querySelector('#dashboardEngagementChart');
 
-<!-- Bootstrap bundle js -->
-<script src="assets/libs/bootstrap/js/bootstrap.bundle.min.js"></script>
+    if (trendEl && typeof ApexCharts !== 'undefined') {
+        new ApexCharts(trendEl, {
+            chart: { type: 'area', height: 330, toolbar: { show: false } },
+            stroke: { curve: 'smooth', width: 3 },
+            fill: { type: 'gradient', gradient: { shadeIntensity: 1, opacityFrom: 0.28, opacityTo: 0.04 } },
+            dataLabels: { enabled: false },
+            series: <?= json_encode($trendSeries) ?>,
+            xaxis: { categories: <?= json_encode($trendLabels) ?>, axisBorder: { show: false }, axisTicks: { show: false } },
+            grid: { borderColor: 'rgba(148,163,184,0.18)', strokeDashArray: 4 },
+            legend: { position: 'top', horizontalAlign: 'left' },
+            colors: ['#0d6efd', '#20c997', '#f59f00']
+        }).render();
+    }
 
-<!-- Layouts main js -->
-<script src="assets/libs/jquery/jquery.min.js"></script>
-
-<!-- Metimenu js -->
-<script src="assets/libs/metismenu/metisMenu.min.js"></script>
-
-<!-- simplebar js -->
-<script src="assets/libs/simplebar/simplebar.min.js"></script>
-
-<script src="assets/libs/eva-icons/eva.min.js"></script>
-
-<!-- Scroll Top init -->
-<script src="assets/js/scroll-top.init.js"></script>
-<!-- select2 -->
-<script src="assets/libs/select2/js/select2.min.js"></script>
-
-<!-- apexcharts -->
-<script src="assets/libs/apexcharts/apexcharts.min.js"></script>
-
-<!-- Progress js -->
-<script src="assets/js/progress-bar.js"></script>
-
-<!-- dashboard init -->
-<script src="assets/js/dashboard/index.init.js"></script>
-
-<!-- App js -->
-<script src="assets/js/app.js"></script>
+    if (engagementEl && typeof ApexCharts !== 'undefined') {
+        new ApexCharts(engagementEl, {
+            chart: { type: 'donut', height: 330 },
+            series: <?= json_encode($engagementSeries) ?>,
+            labels: <?= json_encode($engagementLabels) ?>,
+            legend: { position: 'bottom' },
+            dataLabels: { enabled: true },
+            colors: ['#198754', '#dc3545', '#0dcaf0'],
+            stroke: { width: 0 },
+            plotOptions: { pie: { donut: { size: '70%' } } }
+        }).render();
+    }
+});
+</script>
 
 </body>
-
-
 </html>
