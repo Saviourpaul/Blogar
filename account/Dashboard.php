@@ -157,28 +157,106 @@ if ($isAdmin) {
 ?>
 
 <style>
-    .dashboard-hero{background:radial-gradient(circle at top left,rgba(13,110,253,.2),transparent 28%),radial-gradient(circle at bottom right,rgba(25,135,84,.18),transparent 24%),linear-gradient(135deg,#fff 0%,#f6f9fc 100%);border:1px solid rgba(15,23,42,.08);overflow:hidden}
-    .dashboard-stat-card,.dashboard-panel{border:1px solid rgba(15,23,42,.08);border-radius:1rem;box-shadow:0 16px 40px rgba(15,23,42,.05)}
-    .dashboard-stat-card{transition:transform .2s ease,box-shadow .2s ease}
-    .dashboard-stat-card:hover{transform:translateY(-2px);box-shadow:0 20px 46px rgba(15,23,42,.08)}
-    .dashboard-icon{width:52px;height:52px;border-radius:16px;display:inline-flex;align-items:center;justify-content:center;font-size:1.4rem}
-    .dashboard-quick-link{border:1px solid rgba(15,23,42,.08);border-radius:1rem;padding:1rem;text-decoration:none;color:inherit;background:#fff;transition:all .2s ease}
-    .dashboard-quick-link:hover{border-color:rgba(13,110,253,.28);transform:translateY(-2px)}
+    .dashboard-hero {
+        background: radial-gradient(circle at top left, rgba(13, 110, 253, .2), transparent 28%), radial-gradient(circle at bottom right, rgba(25, 135, 84, .18), transparent 24%), linear-gradient(135deg, #fff 0%, #f6f9fc 100%);
+        border: 1px solid rgba(15, 23, 42, .08);
+        overflow: hidden
+    }
+
+    .dashboard-stat-card,
+    .dashboard-panel {
+        border: 1px solid rgba(15, 23, 42, .08);
+        border-radius: 1rem;
+        box-shadow: 0 16px 40px rgba(15, 23, 42, .05)
+    }
+
+    .dashboard-stat-card {
+        transition: transform .2s ease, box-shadow .2s ease
+    }
+
+    .dashboard-stat-card:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 20px 46px rgba(15, 23, 42, .08)
+    }
+
+    .dashboard-icon {
+        width: 52px;
+        height: 52px;
+        border-radius: 16px;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 1.4rem
+    }
+
+    .dashboard-quick-link {
+        border: 1px solid rgba(15, 23, 42, .08);
+        border-radius: 1rem;
+        padding: 1rem;
+        text-decoration: none;
+        color: inherit;
+        background: #fff;
+        transition: all .2s ease
+    }
+
+    .dashboard-quick-link:hover {
+        border-color: rgba(13, 110, 253, .28);
+        transform: translateY(-2px)
+    }
 </style>
 
 <body>
-<div id="layout-wrapper">
-    <?= include 'includes/sidebar.php' ?>
-    <div class="sidebar-backdrop" id="sidebar-backdrop"></div>
-    <div class="sidebar-backdrop" id="sidebar-backdrop"></div>
-    <div class="main-content">
-        <div class="page-content">
-            <div class="container-fluid">
-                <div class="row"><div class="col-12"><div class="card dashboard-hero shadow-sm mb-4"><div class="card-body p-4 p-lg-5"><div class="row align-items-center g-4"><div class="col-lg-8"><span class="badge rounded-pill bg-primary-subtle text-primary px-3 py-2 mb-3"><?= $isAdmin ? 'Admin Analytics' : 'Personal Workspace' ?></span><h2 class="mb-2">Welcome back, <?= htmlspecialchars($displayName, ENT_QUOTES, 'UTF-8') ?></h2><p class="text-muted mb-0"><?= $isAdmin ? 'Track platform growth, publishing activity, and community engagement from one place.' : 'Monitor your publishing momentum, followers, and post engagement in one clean view.' ?></p></div><div class="col-lg-4"><div class="row g-3"><div class="col-6"><div class="rounded-4 bg-white border p-3 h-100"><div class="text-muted small mb-1">Unread Notifications</div><div class="fs-3 fw-bold"><?= $unreadNotifications ?></div></div></div><div class="col-6"><div class="rounded-4 bg-white border p-3 h-100"><div class="text-muted small mb-1"><?= $isAdmin ? 'Platform Followers' : 'Total Following' ?></div><div class="fs-3 fw-bold"><?= $isAdmin ? dashboardFetchValue($connection, "SELECT COUNT(*) FROM followers") : getFollowingCount($connection, $currentUserId) ?></div></div></div></div></div></div></div></div></div></div>
+    <div id="layout-wrapper">
+        <?= include 'includes/sidebar.php' ?>
+        <div class="sidebar-backdrop" id="sidebar-backdrop"></div>
+        <div class="sidebar-backdrop" id="sidebar-backdrop"></div>
+        <div class="main-content">
+            <div class="page-content">
+                <div class="container-fluid">
+                    <div class="row">
+                        <div class="col-12">
+                            <div class="card dashboard-hero shadow-sm mb-4">
+                                <div class="card-body p-4 p-lg-5">
+                                    <div class="row align-items-center g-4">
+                                        <div class="col-lg-8"><span
+                                                class="badge rounded-pill bg-primary-subtle text-primary px-3 py-2 mb-3"><?= $isAdmin ? 'Admin Analytics' : 'Personal Workspace' ?></span>
+                                            <h2 class="mb-2">Welcome back,
+                                                <?= htmlspecialchars($displayName, ENT_QUOTES, 'UTF-8') ?></h2>
+                                            <p class="text-muted mb-0"></p>
+                                        </div>
+                                        <div class="col-lg-4">
+                                            <div class="row g-3">
+                                                <div class="col-6">
+                                                    <div class="fs-3 fw-bold"></div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
 
                 <div class="row g-3 mb-4">
                     <?php foreach ($stats as $stat): ?>
-                        <div class="col-sm-6 col-xl-3"><div class="card dashboard-stat-card mb-0"><div class="card-body"><div class="d-flex align-items-center justify-content-between mb-3"><div><div class="text-muted small text-uppercase mb-1"><?= htmlspecialchars($stat['label'], ENT_QUOTES, 'UTF-8') ?></div><div class="fs-2 fw-bold"><?= (int) $stat['value'] ?></div></div><div class="dashboard-icon bg-<?= htmlspecialchars($stat['tone'], ENT_QUOTES, 'UTF-8') ?>-subtle text-<?= htmlspecialchars($stat['tone'], ENT_QUOTES, 'UTF-8') ?>"><i class="mdi <?= htmlspecialchars($stat['icon'], ENT_QUOTES, 'UTF-8') ?>"></i></div></div></div></div></div>
+                        <div class="col-sm-6 col-xl-3">
+                            <div class="card dashboard-stat-card mb-0">
+                                <div class="card-body">
+                                    <div class="d-flex align-items-center justify-content-between mb-3">
+                                        <div>
+                                            <div class="text-muted small text-uppercase mb-1">
+                                                <?= htmlspecialchars($stat['label'], ENT_QUOTES, 'UTF-8') ?></div>
+                                            <div class="fs-2 fw-bold"><?= (int) $stat['value'] ?></div>
+                                        </div>
+                                        <div
+                                            class="dashboard-icon bg-<?= htmlspecialchars($stat['tone'], ENT_QUOTES, 'UTF-8') ?>-subtle text-<?= htmlspecialchars($stat['tone'], ENT_QUOTES, 'UTF-8') ?>">
+                                            <i class="mdi <?= htmlspecialchars($stat['icon'], ENT_QUOTES, 'UTF-8') ?>"></i>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
                     <?php endforeach; ?>
                 </div>
 
@@ -186,19 +264,25 @@ if ($isAdmin) {
                     <div class="col-xl-8">
                         <div class="card dashboard-panel mb-0">
                             <div class="card-header bg-transparent border-0 pt-4 px-4">
-                                <h5 class="card-title mb-1"><?= $isAdmin ? 'Growth Overview' : 'Publishing Momentum' ?></h5>
+                                <h5 class="card-title mb-1"><?= $isAdmin ? 'Growth Overview' : 'Publishing Momentum' ?>
+                                </h5>
                                 <p class="text-muted mb-0 small">Last 6 months activity</p>
                             </div>
-                            <div class="card-body px-4 pb-4"><div id="dashboardTrendChart" style="min-height:330px;"></div></div>
+                            <div class="card-body px-4 pb-4">
+                                <div id="dashboardTrendChart" style="min-height:330px;"></div>
+                            </div>
                         </div>
                     </div>
                     <div class="col-xl-4">
                         <div class="card dashboard-panel mb-0">
                             <div class="card-header bg-transparent border-0 pt-4 px-4">
-                                <h5 class="card-title mb-1"><?= $isAdmin ? 'Platform Engagement' : 'My Engagement Mix' ?></h5>
+                                <h5 class="card-title mb-1">
+                                    <?= $isAdmin ? 'Platform Engagement' : 'My Engagement Mix' ?></h5>
                                 <p class="text-muted mb-0 small">Likes, dislikes, and shares</p>
                             </div>
-                            <div class="card-body px-4 pb-4"><div id="dashboardEngagementChart" style="min-height:330px;"></div></div>
+                            <div class="card-body px-4 pb-4">
+                                <div id="dashboardEngagementChart" style="min-height:330px;"></div>
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -214,10 +298,13 @@ if ($isAdmin) {
                                 <div class="row g-3">
                                     <?php foreach ($quickLinks as $link): ?>
                                         <div class="col-12">
-                                            <a href="<?= htmlspecialchars($link['href'], ENT_QUOTES, 'UTF-8') ?>" class="dashboard-quick-link d-flex align-items-center justify-content-between">
+                                            <a href="<?= htmlspecialchars($link['href'], ENT_QUOTES, 'UTF-8') ?>"
+                                                class="dashboard-quick-link d-flex align-items-center justify-content-between">
                                                 <div class="d-flex align-items-center gap-3">
-                                                    <span class="dashboard-icon bg-light text-primary"><i class="mdi <?= htmlspecialchars($link['icon'], ENT_QUOTES, 'UTF-8') ?>"></i></span>
-                                                    <span class="fw-semibold"><?= htmlspecialchars($link['label'], ENT_QUOTES, 'UTF-8') ?></span>
+                                                    <span class="dashboard-icon bg-light text-primary"><i
+                                                            class="mdi <?= htmlspecialchars($link['icon'], ENT_QUOTES, 'UTF-8') ?>"></i></span>
+                                                    <span
+                                                        class="fw-semibold"><?= htmlspecialchars($link['label'], ENT_QUOTES, 'UTF-8') ?></span>
                                                 </div>
                                                 <i class="mdi mdi-chevron-right text-muted"></i>
                                             </a>
@@ -231,27 +318,50 @@ if ($isAdmin) {
                     <div class="col-xl-8">
                         <div class="card dashboard-panel h-100 mb-0">
                             <div class="card-header bg-transparent border-0 pt-4 px-4">
-                                <h5 class="card-title mb-1"><?= htmlspecialchars($activityTitle, ENT_QUOTES, 'UTF-8') ?></h5>
-                                <p class="text-muted mb-0 small"><?= $isAdmin ? 'Newest members joining the community' : 'Your latest activity alerts' ?></p>
+                                <h5 class="card-title mb-1"><?= htmlspecialchars($activityTitle, ENT_QUOTES, 'UTF-8') ?>
+                                </h5>
+                                <p class="text-muted mb-0 small">
+                                    <?= $isAdmin ? 'Newest members joining the community' : 'Your latest activity alerts' ?>
+                                </p>
                             </div>
                             <div class="card-body px-4 pb-4">
                                 <?php if (empty($activityRows)): ?>
-                                    <div class="text-center py-5 text-muted"><i class="mdi mdi-database-off-outline fs-1 d-block mb-2"></i>Nothing to show yet.</div>
+                                    <div class="text-center py-5 text-muted"><i
+                                            class="mdi mdi-database-off-outline fs-1 d-block mb-2"></i>Nothing to show yet.
+                                    </div>
                                 <?php elseif ($isAdmin): ?>
                                     <div class="d-grid gap-3">
                                         <?php foreach ($activityRows as $member): ?>
-                                            <a href="UserProfile?id=<?= (int) $member['id'] ?>" class="text-reset text-decoration-none border rounded-4 p-3 d-flex align-items-center justify-content-between gap-3">
+                                            <a href="UserProfile?id=<?= (int) $member['id'] ?>"
+                                                class="text-reset text-decoration-none border rounded-4 p-3 d-flex align-items-center justify-content-between gap-3">
                                                 <div class="d-flex align-items-center gap-3">
                                                     <span class="avatar avatar-md avatar-circle overflow-hidden">
                                                         <?php if (!empty($member['avatar'])): ?>
-                                                            <img src="account/uploads/<?= htmlspecialchars($member['avatar'], ENT_QUOTES, 'UTF-8') ?>" class="img-fluid" alt="<?= htmlspecialchars(trim(($member['firstname'] ?? '') . ' ' . ($member['lastname'] ?? '')), ENT_QUOTES, 'UTF-8') ?>">
+                                                            <img src="account/uploads/<?= htmlspecialchars($member['avatar'], ENT_QUOTES, 'UTF-8') ?>"
+                                                                class="img-fluid"
+                                                                alt="<?= htmlspecialchars(trim(($member['firstname'] ?? '') . ' ' . ($member['lastname'] ?? '')), ENT_QUOTES, 'UTF-8') ?>">
                                                         <?php else: ?>
-                                                            <span class="avatar-title bg-soft-primary text-primary fw-semibold"><?= htmlspecialchars(strtoupper(substr(trim(($member['firstname'] ?? '') . ' ' . ($member['lastname'] ?? $member['username'] ?? 'A')), 0, 1)), ENT_QUOTES, 'UTF-8') ?></span>
+                                                            <span
+                                                                class="avatar-title bg-soft-primary text-primary fw-semibold"><?= htmlspecialchars(strtoupper(substr(trim(($member['firstname'] ?? '') . ' ' . ($member['lastname'] ?? $member['username'] ?? 'A')), 0, 1)), ENT_QUOTES, 'UTF-8') ?></span>
                                                         <?php endif; ?>
                                                     </span>
-                                                    <div><div class="fw-semibold"><?= htmlspecialchars(trim(($member['firstname'] ?? '') . ' ' . ($member['lastname'] ?? '')) ?: ($member['username'] ?? 'Member'), ENT_QUOTES, 'UTF-8') ?></div><div class="text-muted small">@<?= htmlspecialchars($member['username'] ?? 'member', ENT_QUOTES, 'UTF-8') ?></div></div>
+                                                    <div>
+                                                        <div class="fw-semibold">
+                                                            <?= htmlspecialchars(trim(($member['firstname'] ?? '') . ' ' . ($member['lastname'] ?? '')) ?: ($member['username'] ?? 'Member'), ENT_QUOTES, 'UTF-8') ?>
+                                                        </div>
+                                                        <div class="text-muted small">
+                                                            @<?= htmlspecialchars($member['username'] ?? 'member', ENT_QUOTES, 'UTF-8') ?>
+                                                        </div>
+                                                    </div>
                                                 </div>
-                                                <div class="text-end"><div class="badge bg-light text-dark border mb-1"><?= htmlspecialchars(ucfirst((string) ($member['status'] ?? 'active')), ENT_QUOTES, 'UTF-8') ?></div><div class="small text-muted"><?= htmlspecialchars(getRelativeTime($member['created_at']), ENT_QUOTES, 'UTF-8') ?></div></div>
+                                                <div class="text-end">
+                                                    <div class="badge bg-light text-dark border mb-1">
+                                                        <?= htmlspecialchars(ucfirst((string) ($member['status'] ?? 'active')), ENT_QUOTES, 'UTF-8') ?>
+                                                    </div>
+                                                    <div class="small text-muted">
+                                                        <?= htmlspecialchars(getRelativeTime($member['created_at']), ENT_QUOTES, 'UTF-8') ?>
+                                                    </div>
+                                                </div>
                                             </a>
                                         <?php endforeach; ?>
                                     </div>
@@ -259,9 +369,24 @@ if ($isAdmin) {
                                     <div class="d-grid gap-3">
                                         <?php foreach ($activityRows as $notification): ?>
                                             <?php $notificationMeta = getNotificationMeta($notification['type'] ?? ''); ?>
-                                            <a href="<?= htmlspecialchars($notification['link'] ?: '#', ENT_QUOTES, 'UTF-8') ?>" class="text-reset text-decoration-none border rounded-4 p-3 d-flex align-items-start gap-3">
-                                                <div class="avatar avatar-sm <?= htmlspecialchars($notificationMeta['avatar'], ENT_QUOTES, 'UTF-8') ?>"><span class="rounded fs-18"><i class="mdi <?= htmlspecialchars($notificationMeta['icon'], ENT_QUOTES, 'UTF-8') ?>"></i></span></div>
-                                                <div class="flex-grow-1"><div class="fw-semibold"><?= htmlspecialchars($notification['title'], ENT_QUOTES, 'UTF-8') ?></div><div class="text-muted small mb-1"><?= htmlspecialchars($notification['message'], ENT_QUOTES, 'UTF-8') ?></div><div class="small text-muted"><?= htmlspecialchars(getRelativeTime(is_numeric($notification['created_value']) ? date('Y-m-d H:i:s', (int) $notification['created_value']) : $notification['created_value']), ENT_QUOTES, 'UTF-8') ?></div></div>
+                                            <a href="<?= htmlspecialchars($notification['link'] ?: '#', ENT_QUOTES, 'UTF-8') ?>"
+                                                class="text-reset text-decoration-none border rounded-4 p-3 d-flex align-items-start gap-3">
+                                                <div
+                                                    class="avatar avatar-sm <?= htmlspecialchars($notificationMeta['avatar'], ENT_QUOTES, 'UTF-8') ?>">
+                                                    <span class="rounded fs-18"><i
+                                                            class="mdi <?= htmlspecialchars($notificationMeta['icon'], ENT_QUOTES, 'UTF-8') ?>"></i></span>
+                                                </div>
+                                                <div class="flex-grow-1">
+                                                    <div class="fw-semibold">
+                                                        <?= htmlspecialchars($notification['title'], ENT_QUOTES, 'UTF-8') ?>
+                                                    </div>
+                                                    <div class="text-muted small mb-1">
+                                                        <?= htmlspecialchars($notification['message'], ENT_QUOTES, 'UTF-8') ?>
+                                                    </div>
+                                                    <div class="small text-muted">
+                                                        <?= htmlspecialchars(getRelativeTime(is_numeric($notification['created_value']) ? date('Y-m-d H:i:s', (int) $notification['created_value']) : $notification['created_value']), ENT_QUOTES, 'UTF-8') ?>
+                                                    </div>
+                                                </div>
                                             </a>
                                         <?php endforeach; ?>
                                     </div>
@@ -275,12 +400,17 @@ if ($isAdmin) {
                     <div class="col-12">
                         <div class="card dashboard-panel mb-0">
                             <div class="card-header bg-transparent border-0 pt-4 px-4">
-                                <h5 class="card-title mb-1"><?= htmlspecialchars($tableTitle, ENT_QUOTES, 'UTF-8') ?></h5>
-                                <p class="text-muted mb-0 small"><?= $isAdmin ? 'Most recent publishing activity across the platform' : 'Your latest published ideas' ?></p>
+                                <h5 class="card-title mb-1"><?= htmlspecialchars($tableTitle, ENT_QUOTES, 'UTF-8') ?>
+                                </h5>
+                                <p class="text-muted mb-0 small">
+                                    <?= $isAdmin ? 'Most recent publishing activity across the platform' : 'Your latest published ideas' ?>
+                                </p>
                             </div>
                             <div class="card-body px-4 pb-4">
                                 <?php if (empty($tableRows)): ?>
-                                    <div class="text-center py-5 text-muted"><i class="mdi mdi-notebook-outline fs-1 d-block mb-2"></i>Nothing to display yet.</div>
+                                    <div class="text-center py-5 text-muted"><i
+                                            class="mdi mdi-notebook-outline fs-1 d-block mb-2"></i>Nothing to display yet.
+                                    </div>
                                 <?php else: ?>
                                     <div class="table-responsive">
                                         <table class="table align-middle mb-0">
@@ -296,17 +426,25 @@ if ($isAdmin) {
                                             <tbody>
                                                 <?php foreach ($tableRows as $row): ?>
                                                     <tr>
-                                                        <td><a href="postOverview?id=<?= (int) $row['id'] ?>" class="text-body fw-semibold"><?= htmlspecialchars($row['title'], ENT_QUOTES, 'UTF-8') ?></a></td>
-                                                        <td><?= $isAdmin ? htmlspecialchars(trim(($row['firstname'] ?? '') . ' ' . ($row['lastname'] ?? '')) ?: 'Unknown', ENT_QUOTES, 'UTF-8') : htmlspecialchars($row['category_title'] ?: 'General', ENT_QUOTES, 'UTF-8') ?></td>
-                                                        <td><?= htmlspecialchars(getRelativeTime($row['created_at']), ENT_QUOTES, 'UTF-8') ?></td>
+                                                        <td><a href="postOverview?id=<?= (int) $row['id'] ?>"
+                                                                class="text-body fw-semibold"><?= htmlspecialchars($row['title'], ENT_QUOTES, 'UTF-8') ?></a>
+                                                        </td>
+                                                        <td><?= $isAdmin ? htmlspecialchars(trim(($row['firstname'] ?? '') . ' ' . ($row['lastname'] ?? '')) ?: 'Unknown', ENT_QUOTES, 'UTF-8') : htmlspecialchars($row['category_title'] ?: 'General', ENT_QUOTES, 'UTF-8') ?>
+                                                        </td>
+                                                        <td><?= htmlspecialchars(getRelativeTime($row['created_at']), ENT_QUOTES, 'UTF-8') ?>
+                                                        </td>
                                                         <td>
                                                             <?php if ($isAdmin): ?>
                                                                 <?= htmlspecialchars($row['category_title'] ?: 'General', ENT_QUOTES, 'UTF-8') ?>
                                                             <?php else: ?>
-                                                                <span class="text-muted small"><i class="mdi mdi-comment-outline me-1"></i><?= (int) ($row['comment_count'] ?? 0) ?> <i class="mdi mdi-thumb-up-outline ms-2 me-1"></i><?= (int) ($row['like_count'] ?? 0) ?></span>
+                                                                <span class="text-muted small"><i
+                                                                        class="mdi mdi-comment-outline me-1"></i><?= (int) ($row['comment_count'] ?? 0) ?>
+                                                                    <i
+                                                                        class="mdi mdi-thumb-up-outline ms-2 me-1"></i><?= (int) ($row['like_count'] ?? 0) ?></span>
                                                             <?php endif; ?>
                                                         </td>
-                                                        <td class="text-end"><a href="postOverview?id=<?= (int) $row['id'] ?>" class="btn btn-sm btn-light border">View</a></td>
+                                                        <td class="text-end"><a href="postOverview?id=<?= (int) $row['id'] ?>"
+                                                                class="btn btn-sm btn-light border">View</a></td>
                                                     </tr>
                                                 <?php endforeach; ?>
                                             </tbody>
@@ -322,50 +460,51 @@ if ($isAdmin) {
 
         <?php include 'includes/footer.php' ?>
     </div>
-</div>
+    </div>
 
-<script src="account/assets/libs/bootstrap/js/bootstrap.bundle.min.js"></script>
-<script src="account/assets/libs/jquery/jquery.min.js"></script>
-<script src="account/assets/libs/metismenu/metisMenu.min.js"></script>
-<script src="account/assets/libs/simplebar/simplebar.min.js"></script>
-<script src="account/assets/libs/eva-icons/eva.min.js"></script>
-<script src="account/assets/js/scroll-top.init.js"></script>
-<script src="account/assets/libs/select2/js/select2.min.js"></script>
-<script src="account/assets/libs/apexcharts/apexcharts.min.js"></script>
-<script src="account/assets/js/app.js"></script>
-<script>
-document.addEventListener('DOMContentLoaded', function () {
-    const trendEl = document.querySelector('#dashboardTrendChart');
-    const engagementEl = document.querySelector('#dashboardEngagementChart');
+    <script src="account/assets/libs/bootstrap/js/bootstrap.bundle.min.js"></script>
+    <script src="account/assets/libs/jquery/jquery.min.js"></script>
+    <script src="account/assets/libs/metismenu/metisMenu.min.js"></script>
+    <script src="account/assets/libs/simplebar/simplebar.min.js"></script>
+    <script src="account/assets/libs/eva-icons/eva.min.js"></script>
+    <script src="account/assets/js/scroll-top.init.js"></script>
+    <script src="account/assets/libs/select2/js/select2.min.js"></script>
+    <script src="account/assets/libs/apexcharts/apexcharts.min.js"></script>
+    <script src="account/assets/js/app.js"></script>
+    <script>
+        document.addEventListener('DOMContentLoaded', function () {
+            const trendEl = document.querySelector('#dashboardTrendChart');
+            const engagementEl = document.querySelector('#dashboardEngagementChart');
 
-    if (trendEl && typeof ApexCharts !== 'undefined') {
-        new ApexCharts(trendEl, {
-            chart: { type: 'area', height: 330, toolbar: { show: false } },
-            stroke: { curve: 'smooth', width: 3 },
-            fill: { type: 'gradient', gradient: { shadeIntensity: 1, opacityFrom: 0.28, opacityTo: 0.04 } },
-            dataLabels: { enabled: false },
-            series: <?= json_encode($trendSeries) ?>,
-            xaxis: { categories: <?= json_encode($trendLabels) ?>, axisBorder: { show: false }, axisTicks: { show: false } },
-            grid: { borderColor: 'rgba(148,163,184,0.18)', strokeDashArray: 4 },
-            legend: { position: 'top', horizontalAlign: 'left' },
-            colors: ['#0d6efd', '#20c997', '#f59f00']
-        }).render();
-    }
+            if (trendEl && typeof ApexCharts !== 'undefined') {
+                new ApexCharts(trendEl, {
+                    chart: { type: 'area', height: 330, toolbar: { show: false } },
+                    stroke: { curve: 'smooth', width: 3 },
+                    fill: { type: 'gradient', gradient: { shadeIntensity: 1, opacityFrom: 0.28, opacityTo: 0.04 } },
+                    dataLabels: { enabled: false },
+                    series: <?= json_encode($trendSeries) ?>,
+                    xaxis: { categories: <?= json_encode($trendLabels) ?>, axisBorder: { show: false }, axisTicks: { show: false } },
+                    grid: { borderColor: 'rgba(148,163,184,0.18)', strokeDashArray: 4 },
+                    legend: { position: 'top', horizontalAlign: 'left' },
+                    colors: ['#0d6efd', '#20c997', '#f59f00']
+                }).render();
+            }
 
-    if (engagementEl && typeof ApexCharts !== 'undefined') {
-        new ApexCharts(engagementEl, {
-            chart: { type: 'donut', height: 330 },
-            series: <?= json_encode($engagementSeries) ?>,
-            labels: <?= json_encode($engagementLabels) ?>,
-            legend: { position: 'bottom' },
-            dataLabels: { enabled: true },
-            colors: ['#198754', '#dc3545', '#0dcaf0'],
-            stroke: { width: 0 },
-            plotOptions: { pie: { donut: { size: '70%' } } }
-        }).render();
-    }
-});
-</script>
+            if (engagementEl && typeof ApexCharts !== 'undefined') {
+                new ApexCharts(engagementEl, {
+                    chart: { type: 'donut', height: 330 },
+                    series: <?= json_encode($engagementSeries) ?>,
+                    labels: <?= json_encode($engagementLabels) ?>,
+                    legend: { position: 'bottom' },
+                    dataLabels: { enabled: true },
+                    colors: ['#198754', '#dc3545', '#0dcaf0'],
+                    stroke: { width: 0 },
+                    plotOptions: { pie: { donut: { size: '70%' } } }
+                }).render();
+            }
+        });
+    </script>
 
 </body>
+
 </html>

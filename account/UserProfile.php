@@ -178,10 +178,6 @@ $recentPostsStmt->close();
 $profileMeta = [
     ['label' => 'Joined', 'value' => $joinedLabel . ($joinedRelative ? ' | ' . $joinedRelative : '')],
     ['label' => 'Country', 'value' => $safeText($profileUser['country'] ?? '', '-')],
-    ['label' => 'Phone', 'value' => $safeText($profileUser['phone'] ?? '', '-')],
-    ['label' => 'Birthday', 'value' => $safeText($profileUser['birthday'] ?? '', '-')],
-    ['label' => 'Gender', 'value' => htmlspecialchars($genderLabel, ENT_QUOTES, 'UTF-8')],
-    ['label' => 'Address', 'value' => $safeText(trim(($profileUser['address1'] ?? '') . ' ' . ($profileUser['address2'] ?? '')), '-')],
     ['label' => 'Comments', 'value' => (string) $commentCount],
     ['label' => 'Categories', 'value' => (string) $categoryCount],
 ];
@@ -366,7 +362,7 @@ $profileMeta = [
 
                 <div class="row g-4">
                     <div class="col-xl-4">
-                        <div class="card author-meta-card shadow-sm h-100">
+                        <div class="card author-meta-card shadow-sm ">
                             <div class="card-header bg-transparent border-0 pt-4 px-4">
                                 <h5 class="card-title mb-0">About This Author</h5>
                             </div>
