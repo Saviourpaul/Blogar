@@ -74,6 +74,20 @@ function dashboardMonthlySeries($conn, $table, $dateColumn, $whereSql = '', $typ
     return ['labels' => $labels, 'values' => array_values($map)];
 }
 
+function dashboardBuildInClause($column, $ids)
+{
+    $ids = array_values(array_filter(array_map('intval', (array) $ids)));
+    if (empty($ids)) {
+        return ['sql' => '', 'types' => '', 'params' => []];
+    }
+
+    return [
+        'sql' => $column . ' IN (' . implode(', ', array_fill(0, count($ids), '?')) . ')',
+        'types' => str_repeat('i', count($ids)),
+        'params' => $ids,
+    ];
+}
+
 $stats = [];
 $trendLabels = [];
 $trendSeries = [];
@@ -86,6 +100,46 @@ $tableRows = [];
 $tableTitle = '';
 $recentNotifications = getUserNotifications($connection, $currentUserId, 5);
 $unreadNotifications = getUnreadNotificationCount($connection, $currentUserId);
+$accountType = $onboardingState['account_type'] ?? 'poster';
+$accountTypeLabel = $onboardingState['account_type_label'] ?? 'Poster';
+$profileRoleLabel = $onboardingState['profile_role_label'] ?? null;
+$engagementStage = $onboardingState['engagement_stage'] ?? 'exploring';
+$engagementStageLabel = $onboardingState['engagement_stage_label'] ?? 'Exploring ideas';
+$preferredCategoryIds = $onboardingState['preferred_category_ids'] ?? [];
+$preferredCategoryCount = (int) ($onboardingState['category_count'] ?? 0);
+$heroBadge = $isAdmin ? 'Admin Analytics' : $accountTypeLabel . ' Workspace';
+$heroDescription = '';
+$heroHighlights = [];
+$heroPrimaryAction = null;
+$heroSecondaryAction = null;
+$trendTitle = $isAdmin ? 'Growth Overview' : 'Publishing Momentum';
+$trendHint = 'Last 6 months activity';
+$engagementTitle = $isAdmin ? 'Platform Engagement' : 'My Engagement Mix';
+$engagementHint = 'Likes, dislikes, and shares';
+$activityDescription = $isAdmin ? 'Newest members joining the community' : 'Your latest activity alerts';
+$tableDescription = $isAdmin ? 'Most recent publishing activity across the platform' : 'Your latest published ideas';
+
+$categoryFilter = dashboardBuildInClause('category_id', $preferredCategoryIds);
+$categoryTitles = [];
+
+if ($isAdmin) {
+    $heroDescription = 'Keep an eye on growth, engagement, and the latest community activity from one place.';
+}
+
+if (!empty($preferredCategoryIds)) {
+    $titleFilter = dashboardBuildInClause('id', $preferredCategoryIds);
+    $categoryTitles = array_map(
+        static function ($row) {
+            return (string) ($row['title'] ?? '');
+        },
+        dashboardFetchRows(
+            $connection,
+            "SELECT title FROM categories WHERE {$titleFilter['sql']} ORDER BY title ASC",
+            $titleFilter['types'],
+            $titleFilter['params']
+        )
+    );
+}
 
 if ($isAdmin) {
     $stats = [
@@ -122,37 +176,161 @@ if ($isAdmin) {
         ['label' => 'Settings', 'href' => 'setting', 'icon' => 'mdi-cog-outline']
     ];
 } else {
-    $stats = [
-        ['label' => 'My Posts', 'value' => dashboardFetchValue($connection, "SELECT COUNT(*) FROM posts WHERE author_id = ?", 'i', [$currentUserId]), 'icon' => 'mdi-file-document-outline', 'tone' => 'primary'],
-        ['label' => 'My Comments', 'value' => dashboardFetchValue($connection, "SELECT COUNT(*) FROM comments WHERE user_id = ?", 'i', [$currentUserId]), 'icon' => 'mdi-comment-processing-outline', 'tone' => 'success'],
-        ['label' => 'Followers', 'value' => getFollowerCount($connection, $currentUserId), 'icon' => 'mdi-account-heart-outline', 'tone' => 'warning'],
-        ['label' => 'Following', 'value' => getFollowingCount($connection, $currentUserId), 'icon' => 'mdi-account-arrow-right-outline', 'tone' => 'info']
+    $matchingIdeasCount = 0;
+    $matchingIdeasTrend = ['labels' => [], 'values' => []];
+    $matchingEngagementSeries = [0, 0, 0];
+
+    if ($categoryFilter['sql'] !== '') {
+        $matchingIdeasCount = dashboardFetchValue(
+            $connection,
+            "SELECT COUNT(*) FROM posts WHERE {$categoryFilter['sql']}",
+            $categoryFilter['types'],
+            $categoryFilter['params']
+        );
+        $matchingIdeasTrend = dashboardMonthlySeries(
+            $connection,
+            'posts',
+            'created_at',
+            $categoryFilter['sql'],
+            $categoryFilter['types'],
+            $categoryFilter['params']
+        );
+
+        $matchingEngagementSeries = [
+            dashboardFetchValue(
+                $connection,
+                "SELECT COUNT(*) FROM post_interactions pi INNER JOIN posts p ON p.id = pi.post_id WHERE p.category_id IN (" . implode(', ', array_fill(0, count($preferredCategoryIds), '?')) . ") AND pi.interaction_type='like'",
+                str_repeat('i', count($preferredCategoryIds)),
+                $preferredCategoryIds
+            ),
+            dashboardFetchValue(
+                $connection,
+                "SELECT COUNT(*) FROM post_interactions pi INNER JOIN posts p ON p.id = pi.post_id WHERE p.category_id IN (" . implode(', ', array_fill(0, count($preferredCategoryIds), '?')) . ") AND pi.interaction_type='dislike'",
+                str_repeat('i', count($preferredCategoryIds)),
+                $preferredCategoryIds
+            ),
+            dashboardFetchValue(
+                $connection,
+                "SELECT COUNT(*) FROM post_interactions pi INNER JOIN posts p ON p.id = pi.post_id WHERE p.category_id IN (" . implode(', ', array_fill(0, count($preferredCategoryIds), '?')) . ") AND pi.interaction_type='share'",
+                str_repeat('i', count($preferredCategoryIds)),
+                $preferredCategoryIds
+            )
+        ];
+    }
+
+    $categorySummary = empty($categoryTitles) ? 'your selected categories' : implode(', ', array_slice($categoryTitles, 0, 3));
+    $stageMessage = [
+        'exploring' => 'We are keeping things discovery-first so you can learn the landscape before making moves.',
+        'ready' => 'We are surfacing stronger-fit ideas and clearer next steps so you can start conversations confidently.',
+        'urgent' => 'We are pushing high-intent opportunities and faster action cues to the front of your workspace.',
     ];
 
-    $postTrend = dashboardMonthlySeries($connection, 'posts', 'created_at', 'author_id = ?', 'i', [$currentUserId]);
-    $commentTrend = dashboardMonthlySeries($connection, 'comments', 'created_at', 'user_id = ?', 'i', [$currentUserId]);
-    $trendLabels = $postTrend['labels'];
-    $trendSeries = [
-        ['name' => 'My Posts', 'data' => $postTrend['values']],
-        ['name' => 'My Comments', 'data' => $commentTrend['values']]
-    ];
-
-    $engagementSeries = [
-        dashboardFetchValue($connection, "SELECT COUNT(*) FROM post_interactions pi INNER JOIN posts p ON p.id = pi.post_id WHERE p.author_id = ? AND pi.interaction_type='like'", 'i', [$currentUserId]),
-        dashboardFetchValue($connection, "SELECT COUNT(*) FROM post_interactions pi INNER JOIN posts p ON p.id = pi.post_id WHERE p.author_id = ? AND pi.interaction_type='dislike'", 'i', [$currentUserId]),
-        dashboardFetchValue($connection, "SELECT COUNT(*) FROM post_interactions pi INNER JOIN posts p ON p.id = pi.post_id WHERE p.author_id = ? AND pi.interaction_type='share'", 'i', [$currentUserId])
-    ];
+    $heroHighlights = array_values(array_filter([
+        $profileRoleLabel ? $profileRoleLabel : null,
+        $engagementStageLabel,
+        $preferredCategoryCount > 0 ? $preferredCategoryCount . ' focus categories' : null,
+    ]));
 
     $activityTitle = 'Recent Notifications';
     $activityRows = $recentNotifications;
-    $tableTitle = 'My Latest Posts';
-    $tableRows = dashboardFetchRows($connection, "SELECT p.id, p.title, p.created_at, c.title AS category_title, (SELECT COUNT(*) FROM comments cm WHERE cm.post_id = p.id) AS comment_count, (SELECT COUNT(*) FROM post_interactions pi WHERE pi.post_id = p.id AND pi.interaction_type = 'like') AS like_count FROM posts p LEFT JOIN categories c ON c.id = p.category_id WHERE p.author_id = ? ORDER BY p.created_at DESC LIMIT 6", 'i', [$currentUserId]);
-    $quickLinks = [
-        ['label' => 'Create Post', 'href' => 'CreatePost', 'icon' => 'mdi-plus-box-outline'],
-        ['label' => 'Manage My Posts', 'href' => 'managePost', 'icon' => 'mdi-folder-edit-outline'],
-        ['label' => 'My Profile', 'href' => 'UserProfile?id=' . $currentUserId, 'icon' => 'mdi-account-outline'],
-        ['label' => 'Notifications', 'href' => 'notifications', 'icon' => 'mdi-bell-outline']
-    ];
+
+    if ($accountType === 'seeker') {
+        $heroDescription = "You are set up as a seeker. We'll prioritize ideas in {$categorySummary}. " . ($stageMessage[$engagementStage] ?? '');
+        $stats = [
+            ['label' => 'Matching Ideas', 'value' => $matchingIdeasCount, 'icon' => 'mdi-lightbulb-on-outline', 'tone' => 'primary'],
+            ['label' => 'Picked Categories', 'value' => $preferredCategoryCount, 'icon' => 'mdi-shape-outline', 'tone' => 'success'],
+            ['label' => 'Following', 'value' => getFollowingCount($connection, $currentUserId), 'icon' => 'mdi-account-arrow-right-outline', 'tone' => 'warning'],
+            ['label' => 'Unread Alerts', 'value' => $unreadNotifications, 'icon' => 'mdi-bell-ring-outline', 'tone' => 'info']
+        ];
+        $trendLabels = $matchingIdeasTrend['labels'];
+        $trendSeries = [
+            ['name' => 'Matching Ideas', 'data' => $matchingIdeasTrend['values']]
+        ];
+        $engagementSeries = $matchingEngagementSeries;
+        $quickLinks = [
+            ['label' => 'Browse Ideas', 'href' => 'post', 'icon' => 'mdi-compass-outline'],
+            ['label' => 'Update Preferences', 'href' => 'onboarding', 'icon' => 'mdi-tune-variant'],
+            ['label' => 'Notifications', 'href' => 'notifications', 'icon' => 'mdi-bell-outline'],
+            ['label' => 'My Profile', 'href' => 'UserProfile?id=' . $currentUserId, 'icon' => 'mdi-account-outline']
+        ];
+        $tableTitle = 'Ideas For You';
+        $tableDescription = 'Fresh ideas matching the categories you selected during setup.';
+        $tableRows = $categoryFilter['sql'] !== ''
+            ? dashboardFetchRows($connection, "SELECT p.id, p.title, p.created_at, c.title AS category_title, (SELECT COUNT(*) FROM comments cm WHERE cm.post_id = p.id) AS comment_count, (SELECT COUNT(*) FROM post_interactions pi WHERE pi.post_id = p.id AND pi.interaction_type = 'like') AS like_count FROM posts p LEFT JOIN categories c ON c.id = p.category_id WHERE {$categoryFilter['sql']} ORDER BY p.created_at DESC LIMIT 6", $categoryFilter['types'], $categoryFilter['params'])
+            : [];
+        $trendTitle = 'Opportunity Flow';
+        $trendHint = 'New ideas landing in the categories you care about';
+        $engagementTitle = 'Match Engagement';
+        $engagementHint = 'How your preferred ideas are performing';
+        $activityDescription = 'Stay close to replies, follows, and updates while you scout opportunities';
+        $heroPrimaryAction = ['label' => 'Browse matching ideas', 'href' => 'post'];
+        $heroSecondaryAction = ['label' => 'Refine preferences', 'href' => 'onboarding'];
+    } elseif ($accountType === 'both') {
+        $heroDescription = "You are running a hybrid workspace across publishing and discovery. We’re balancing your own idea momentum with opportunities in {$categorySummary}.";
+        $stats = [
+            ['label' => 'My Posts', 'value' => dashboardFetchValue($connection, "SELECT COUNT(*) FROM posts WHERE author_id = ?", 'i', [$currentUserId]), 'icon' => 'mdi-file-document-outline', 'tone' => 'primary'],
+            ['label' => 'Matching Ideas', 'value' => $matchingIdeasCount, 'icon' => 'mdi-lightbulb-on-outline', 'tone' => 'success'],
+            ['label' => 'Following', 'value' => getFollowingCount($connection, $currentUserId), 'icon' => 'mdi-account-arrow-right-outline', 'tone' => 'warning'],
+            ['label' => 'Picked Categories', 'value' => $preferredCategoryCount, 'icon' => 'mdi-shape-outline', 'tone' => 'info']
+        ];
+        $postTrend = dashboardMonthlySeries($connection, 'posts', 'created_at', 'author_id = ?', 'i', [$currentUserId]);
+        $trendLabels = $postTrend['labels'];
+        $trendSeries = [
+            ['name' => 'My Posts', 'data' => $postTrend['values']],
+            ['name' => 'Matching Ideas', 'data' => $matchingIdeasTrend['values']]
+        ];
+        $engagementSeries = [
+            dashboardFetchValue($connection, "SELECT COUNT(*) FROM post_interactions pi INNER JOIN posts p ON p.id = pi.post_id WHERE p.author_id = ? AND pi.interaction_type='like'", 'i', [$currentUserId]),
+            dashboardFetchValue($connection, "SELECT COUNT(*) FROM post_interactions pi INNER JOIN posts p ON p.id = pi.post_id WHERE p.author_id = ? AND pi.interaction_type='dislike'", 'i', [$currentUserId]),
+            dashboardFetchValue($connection, "SELECT COUNT(*) FROM post_interactions pi INNER JOIN posts p ON p.id = pi.post_id WHERE p.author_id = ? AND pi.interaction_type='share'", 'i', [$currentUserId])
+        ];
+        $quickLinks = [
+            ['label' => 'Create Post', 'href' => 'CreatePost', 'icon' => 'mdi-plus-box-outline'],
+            ['label' => 'Browse Ideas', 'href' => 'post', 'icon' => 'mdi-compass-outline'],
+            ['label' => 'Update Preferences', 'href' => 'onboarding', 'icon' => 'mdi-tune-variant'],
+            ['label' => 'Notifications', 'href' => 'notifications', 'icon' => 'mdi-bell-outline']
+        ];
+        $tableTitle = 'Fresh Matches';
+        $tableDescription = 'New ideas in your chosen categories, so discovery is always one click away.';
+        $tableRows = $categoryFilter['sql'] !== ''
+            ? dashboardFetchRows($connection, "SELECT p.id, p.title, p.created_at, c.title AS category_title, (SELECT COUNT(*) FROM comments cm WHERE cm.post_id = p.id) AS comment_count, (SELECT COUNT(*) FROM post_interactions pi WHERE pi.post_id = p.id AND pi.interaction_type = 'like') AS like_count FROM posts p LEFT JOIN categories c ON c.id = p.category_id WHERE {$categoryFilter['sql']} ORDER BY p.created_at DESC LIMIT 6", $categoryFilter['types'], $categoryFilter['params'])
+            : [];
+        $trendTitle = 'Momentum + Matches';
+        $trendHint = 'Your publishing pace beside the opportunity flow in your focus areas';
+        $heroPrimaryAction = ['label' => 'Open your feed', 'href' => 'post'];
+        $heroSecondaryAction = ['label' => 'Create a new post', 'href' => 'CreatePost'];
+    } else {
+        $heroDescription = "You are set up to post ideas first. We'll keep your workspace centered on publishing momentum while watching interest around {$categorySummary}.";
+        $stats = [
+            ['label' => 'My Posts', 'value' => dashboardFetchValue($connection, "SELECT COUNT(*) FROM posts WHERE author_id = ?", 'i', [$currentUserId]), 'icon' => 'mdi-file-document-outline', 'tone' => 'primary'],
+            ['label' => 'Picked Categories', 'value' => $preferredCategoryCount, 'icon' => 'mdi-shape-outline', 'tone' => 'success'],
+            ['label' => 'Followers', 'value' => getFollowerCount($connection, $currentUserId), 'icon' => 'mdi-account-heart-outline', 'tone' => 'warning'],
+            ['label' => 'Following', 'value' => getFollowingCount($connection, $currentUserId), 'icon' => 'mdi-account-arrow-right-outline', 'tone' => 'info']
+        ];
+        $postTrend = dashboardMonthlySeries($connection, 'posts', 'created_at', 'author_id = ?', 'i', [$currentUserId]);
+        $commentTrend = dashboardMonthlySeries($connection, 'comments', 'created_at', 'user_id = ?', 'i', [$currentUserId]);
+        $trendLabels = $postTrend['labels'];
+        $trendSeries = [
+            ['name' => 'My Posts', 'data' => $postTrend['values']],
+            ['name' => 'My Comments', 'data' => $commentTrend['values']]
+        ];
+        $engagementSeries = [
+            dashboardFetchValue($connection, "SELECT COUNT(*) FROM post_interactions pi INNER JOIN posts p ON p.id = pi.post_id WHERE p.author_id = ? AND pi.interaction_type='like'", 'i', [$currentUserId]),
+            dashboardFetchValue($connection, "SELECT COUNT(*) FROM post_interactions pi INNER JOIN posts p ON p.id = pi.post_id WHERE p.author_id = ? AND pi.interaction_type='dislike'", 'i', [$currentUserId]),
+            dashboardFetchValue($connection, "SELECT COUNT(*) FROM post_interactions pi INNER JOIN posts p ON p.id = pi.post_id WHERE p.author_id = ? AND pi.interaction_type='share'", 'i', [$currentUserId])
+        ];
+        $quickLinks = [
+            ['label' => 'Create Post', 'href' => 'CreatePost', 'icon' => 'mdi-plus-box-outline'],
+            ['label' => 'Manage My Posts', 'href' => 'managePost', 'icon' => 'mdi-folder-edit-outline'],
+            ['label' => 'Update Preferences', 'href' => 'onboarding', 'icon' => 'mdi-tune-variant'],
+            ['label' => 'My Profile', 'href' => 'UserProfile?id=' . $currentUserId, 'icon' => 'mdi-account-outline']
+        ];
+        $tableTitle = 'My Latest Posts';
+        $tableDescription = 'Your latest published ideas and the engagement they are attracting.';
+        $tableRows = dashboardFetchRows($connection, "SELECT p.id, p.title, p.created_at, c.title AS category_title, (SELECT COUNT(*) FROM comments cm WHERE cm.post_id = p.id) AS comment_count, (SELECT COUNT(*) FROM post_interactions pi WHERE pi.post_id = p.id AND pi.interaction_type = 'like') AS like_count FROM posts p LEFT JOIN categories c ON c.id = p.category_id WHERE p.author_id = ? ORDER BY p.created_at DESC LIMIT 6", 'i', [$currentUserId]);
+        $heroPrimaryAction = ['label' => 'Create a post', 'href' => 'CreatePost'];
+        $heroSecondaryAction = ['label' => 'Open your feed', 'href' => 'post'];
+    }
 }
 ?>
 
@@ -203,6 +381,19 @@ if ($isAdmin) {
         border-color: rgba(13, 110, 253, .28);
         transform: translateY(-2px)
     }
+
+    .dashboard-hero-chip {
+        display: inline-flex;
+        align-items: center;
+        gap: .4rem;
+        padding: .55rem .9rem;
+        border-radius: 999px;
+        border: 1px solid rgba(15, 23, 42, .08);
+        background: rgba(255, 255, 255, .85);
+        color: #334155;
+        font-size: .85rem;
+        font-weight: 600;
+    }
 </style>
 
 <body>
@@ -219,17 +410,27 @@ if ($isAdmin) {
                                 <div class="card-body p-4 p-lg-5">
                                     <div class="row align-items-center g-4">
                                         <div class="col-lg-8"><span
-                                                class="badge rounded-pill bg-primary-subtle text-primary px-3 py-2 mb-3"><?= $isAdmin ? 'Admin Analytics' : 'Personal Workspace' ?></span>
+                                                class="badge rounded-pill bg-primary-subtle text-primary px-3 py-2 mb-3"><?= htmlspecialchars($heroBadge, ENT_QUOTES, 'UTF-8') ?></span>
                                             <h2 class="mb-2">Welcome back,
                                                 <?= htmlspecialchars($displayName, ENT_QUOTES, 'UTF-8') ?></h2>
-                                            <p class="text-muted mb-0"></p>
+                                            <p class="text-muted mb-3"><?= htmlspecialchars($heroDescription, ENT_QUOTES, 'UTF-8') ?></p>
+                                            <?php if (!empty($heroHighlights)): ?>
+                                                <div class="d-flex flex-wrap gap-2">
+                                                    <?php foreach ($heroHighlights as $highlight): ?>
+                                                        <span class="dashboard-hero-chip"><?= htmlspecialchars($highlight, ENT_QUOTES, 'UTF-8') ?></span>
+                                                    <?php endforeach; ?>
+                                                </div>
+                                            <?php endif; ?>
                                         </div>
                                         <div class="col-lg-4">
-                                            <div class="row g-3">
-                                                <div class="col-6">
-                                                    <div class="fs-3 fw-bold"></div>
+                                            <?php if (!$isAdmin && $heroPrimaryAction && $heroSecondaryAction): ?>
+                                                <div class="d-grid gap-3">
+                                                    <a href="<?= htmlspecialchars($heroPrimaryAction['href'], ENT_QUOTES, 'UTF-8') ?>" class="btn btn-primary rounded-pill px-4">
+                                                        <?= htmlspecialchars($heroPrimaryAction['label'], ENT_QUOTES, 'UTF-8') ?>
+                                                    </a>
+                                                    
                                                 </div>
-                                            </div>
+                                            <?php endif; ?>
                                         </div>
                                     </div>
                                 </div>
@@ -264,9 +465,9 @@ if ($isAdmin) {
                     <div class="col-xl-8">
                         <div class="card dashboard-panel mb-0">
                             <div class="card-header bg-transparent border-0 pt-4 px-4">
-                                <h5 class="card-title mb-1"><?= $isAdmin ? 'Growth Overview' : 'Publishing Momentum' ?>
+                                <h5 class="card-title mb-1"><?= htmlspecialchars($trendTitle, ENT_QUOTES, 'UTF-8') ?>
                                 </h5>
-                                <p class="text-muted mb-0 small">Last 6 months activity</p>
+                                <p class="text-muted mb-0 small"><?= htmlspecialchars($trendHint, ENT_QUOTES, 'UTF-8') ?></p>
                             </div>
                             <div class="card-body px-4 pb-4">
                                 <div id="dashboardTrendChart" style="min-height:330px;"></div>
@@ -276,9 +477,8 @@ if ($isAdmin) {
                     <div class="col-xl-4">
                         <div class="card dashboard-panel mb-0">
                             <div class="card-header bg-transparent border-0 pt-4 px-4">
-                                <h5 class="card-title mb-1">
-                                    <?= $isAdmin ? 'Platform Engagement' : 'My Engagement Mix' ?></h5>
-                                <p class="text-muted mb-0 small">Likes, dislikes, and shares</p>
+                                <h5 class="card-title mb-1"><?= htmlspecialchars($engagementTitle, ENT_QUOTES, 'UTF-8') ?></h5>
+                                <p class="text-muted mb-0 small"><?= htmlspecialchars($engagementHint, ENT_QUOTES, 'UTF-8') ?></p>
                             </div>
                             <div class="card-body px-4 pb-4">
                                 <div id="dashboardEngagementChart" style="min-height:330px;"></div>
@@ -320,9 +520,7 @@ if ($isAdmin) {
                             <div class="card-header bg-transparent border-0 pt-4 px-4">
                                 <h5 class="card-title mb-1"><?= htmlspecialchars($activityTitle, ENT_QUOTES, 'UTF-8') ?>
                                 </h5>
-                                <p class="text-muted mb-0 small">
-                                    <?= $isAdmin ? 'Newest members joining the community' : 'Your latest activity alerts' ?>
-                                </p>
+                                <p class="text-muted mb-0 small"><?= htmlspecialchars($activityDescription, ENT_QUOTES, 'UTF-8') ?></p>
                             </div>
                             <div class="card-body px-4 pb-4">
                                 <?php if (empty($activityRows)): ?>
@@ -402,9 +600,7 @@ if ($isAdmin) {
                             <div class="card-header bg-transparent border-0 pt-4 px-4">
                                 <h5 class="card-title mb-1"><?= htmlspecialchars($tableTitle, ENT_QUOTES, 'UTF-8') ?>
                                 </h5>
-                                <p class="text-muted mb-0 small">
-                                    <?= $isAdmin ? 'Most recent publishing activity across the platform' : 'Your latest published ideas' ?>
-                                </p>
+                                <p class="text-muted mb-0 small"><?= htmlspecialchars($tableDescription, ENT_QUOTES, 'UTF-8') ?></p>
                             </div>
                             <div class="card-body px-4 pb-4">
                                 <?php if (empty($tableRows)): ?>

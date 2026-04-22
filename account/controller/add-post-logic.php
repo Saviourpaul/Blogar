@@ -2,6 +2,8 @@
 
 require_once __DIR__ . '/../includes/helpers.php';
 
+ensurePostMediaSchema($connection);
+
 if (!isset($_POST['submit'])) {
     header('location: CreatePost');
     exit;
@@ -26,95 +28,150 @@ if (!$is_create_post_enabled) {
     exit;
 }
 
-$author_id = $_SESSION['user-id'];
+$author_id = (int) $_SESSION['user-id'];
 
-$title = trim(filter_input(INPUT_POST,'title',FILTER_SANITIZE_SPECIAL_CHARS));
+$title = trim((string) filter_input(INPUT_POST, 'title', FILTER_SANITIZE_SPECIAL_CHARS));
 $body = sanitizeRichTextHtml($_POST['body'] ?? '');
-$category_id = filter_input(INPUT_POST,'category',FILTER_VALIDATE_INT);
+$category_id = filter_input(INPUT_POST, 'category', FILTER_VALIDATE_INT);
 $is_featured = isset($_POST['is_featured']) ? 1 : 0;
+$media_type = normalizePostMediaType($_POST['media_type'] ?? 'image');
+$video_source = normalizePostVideoSource($_POST['video_source'] ?? '');
+$video_link = trim((string) ($_POST['video_link'] ?? ''));
 
 $thumbnail = $_FILES['thumbnail'] ?? null;
+$video_file = $_FILES['video_file'] ?? null;
 
 $errors = [];
+$thumbnail_name = '';
+$video_provider = '';
+$stored_video_value = '';
+$newlyStoredFiles = [];
+$transactionStarted = false;
 
-/* validation */
-
-if(!$title) $errors[] = "Post title required";
-if(!$body) $errors[] = "Post body required";
-if(!$category_id) $errors[] = "Invalid category";
-
-if(!$thumbnail || $thumbnail['error'] !== 0){
-    $errors[] = "Image upload failed";
+if ($title === '') {
+    $errors[] = "Post title required";
 }
 
-$allowed_mimes = ['image/jpeg','image/png'];
-
-if(empty($errors)){
-
-    $mime = mime_content_type($thumbnail['tmp_name']);
-
-    if(!in_array($mime,$allowed_mimes)){
-        $errors[] = "Only JPG and PNG allowed";
-    }
-
-    if($thumbnail['size'] > 5000000){
-        $errors[] = "Image must be less than 5MB";
-    }
+if ($body === '') {
+    $errors[] = "Post body required";
 }
 
-if(!empty($errors)){
-    $_SESSION['add-post'] = implode("<br>",$errors);
+if (!$category_id) {
+    $errors[] = "Invalid category";
+}
+
+if ($media_type === 'video') {
+    if ($video_source === 'embed') {
+        $parsedVideo = parseExternalVideoReference($video_link);
+        if (!$parsedVideo['is_valid']) {
+            $errors[] = "Use a valid YouTube or Vimeo URL";
+        } else {
+            $video_provider = $parsedVideo['provider'];
+            $stored_video_value = $parsedVideo['video_id'];
+        }
+    } elseif ($video_source === 'upload') {
+        if (!$video_file || ($video_file['error'] ?? UPLOAD_ERR_NO_FILE) === UPLOAD_ERR_NO_FILE) {
+            $errors[] = "Video upload required";
+        } elseif (($video_file['error'] ?? UPLOAD_ERR_OK) !== UPLOAD_ERR_OK) {
+            $errors[] = "Video upload failed";
+        }
+    } else {
+        $errors[] = "Select how the video should be added";
+    }
+} elseif (!$thumbnail || ($thumbnail['error'] ?? UPLOAD_ERR_NO_FILE) !== UPLOAD_ERR_OK) {
+    $errors[] = "Image thumbnail required";
+}
+
+if (!empty($errors)) {
+    $_SESSION['add-post'] = implode("<br>", $errors);
     $_SESSION['add-post-data'] = $_POST;
     header('location: CreatePost');
     exit;
 }
 
-/* image storage */
+try {
+    if ($thumbnail && ($thumbnail['error'] ?? UPLOAD_ERR_NO_FILE) === UPLOAD_ERR_OK) {
+        $storedThumbnail = storePostUpload(
+            $thumbnail,
+            '',
+            'post_thumb_',
+            [
+                'image/jpeg' => 'jpg',
+                'image/png' => 'png',
+            ],
+            5 * 1024 * 1024
+        );
 
-$extension = pathinfo($thumbnail['name'], PATHINFO_EXTENSION);
-$thumbnail_name = uniqid('post_',true).".".$extension;
+        $thumbnail_name = $storedThumbnail['stored_path'];
+        $newlyStoredFiles[] = $thumbnail_name;
+    }
 
-$destination = "account/uploads/".$thumbnail_name;
+    if ($media_type === 'video' && $video_source === 'upload') {
+        $storedVideo = storePostUpload(
+            $video_file,
+            'videos',
+            'post_video_',
+            [
+                'video/mp4' => 'mp4',
+                'video/webm' => 'webm',
+                'video/ogg' => 'ogv',
+                'application/ogg' => 'ogv',
+            ],
+            50 * 1024 * 1024
+        );
 
-if(!move_uploaded_file($thumbnail['tmp_name'],$destination)){
-    $_SESSION['add-post'] = "Failed to upload image";
-    header('location: CreatePost');
-    exit;
-}
+        $video_provider = 'upload';
+        $stored_video_value = $storedVideo['stored_path'];
+        $newlyStoredFiles[] = $stored_video_value;
+    }
 
-/* database transaction */
+    if ($media_type === 'image' && $thumbnail_name === '') {
+        throw new RuntimeException('Image posts require a thumbnail.');
+    }
 
-$connection->begin_transaction();
+    if ($media_type !== 'video') {
+        $video_source = null;
+        $video_provider = null;
+        $stored_video_value = null;
+    }
 
-try{
+    $thumbnail_db_value = $thumbnail_name !== '' ? $thumbnail_name : null;
 
-    if($is_featured){
+    $transactionStarted = true;
+    $connection->begin_transaction();
+
+    if ($is_featured) {
         $connection->query("UPDATE posts SET is_featured=0");
     }
 
     $stmt = $connection->prepare(
         "INSERT INTO posts
-        (author_id,title,body,category_id,thumbnail,is_featured)
-        VALUES (?,?,?,?,?,?)"
+        (author_id, title, body, category_id, thumbnail, is_featured, media_type, video_source, video_provider, video_url)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)"
     );
 
     $stmt->bind_param(
-        "issisi",
+        "issisissss",
         $author_id,
         $title,
         $body,
         $category_id,
-        $thumbnail_name,
-        $is_featured
+        $thumbnail_db_value,
+        $is_featured,
+        $media_type,
+        $video_source,
+        $video_provider,
+        $stored_video_value
     );
 
     $stmt->execute();
-
-    $newPostId = $stmt->insert_id;
+    $newPostId = (int) $stmt->insert_id;
+    $stmt->close();
 
     $connection->commit();
+    $transactionStarted = false;
 
-    $_SESSION['add-post-success']="Post added successfully";
+    $_SESSION['add-post-success'] = "Post added successfully";
 
     $authorQuery = $connection->prepare("SELECT firstname, lastname, email FROM users WHERE id = ? LIMIT 1");
     $authorQuery->bind_param("i", $author_id);
@@ -181,12 +238,22 @@ try{
             }
         }
     }
+} catch (Throwable $exception) {
+    if ($transactionStarted) {
+        $connection->rollback();
+    }
 
-}catch(Exception $e){
+    foreach ($newlyStoredFiles as $storedFile) {
+        deletePostUploadAsset($storedFile);
+    }
 
-    $connection->rollback();
-
-    $_SESSION['add-post']="Failed to add post";
+    error_log('Add post failed: ' . $exception->getMessage());
+    $_SESSION['add-post'] = $exception instanceof RuntimeException
+        ? $exception->getMessage()
+        : "Failed to add post";
+    $_SESSION['add-post-data'] = $_POST;
+    header('location: CreatePost');
+    exit;
 }
 
 header('location: managePost');

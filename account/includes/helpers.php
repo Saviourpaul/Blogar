@@ -52,6 +52,174 @@ function dbTableExists($conn, $table) {
     return $tableCache[$table];
 }
 
+function ensureUserOnboardingSchema($conn) {
+    static $checked = null;
+
+    if (!$conn || !dbTableExists($conn, 'users')) {
+        return false;
+    }
+
+    if ($checked !== null) {
+        return $checked;
+    }
+
+    $columnDefinitions = [
+        'account_type' => "ALTER TABLE users ADD COLUMN account_type VARCHAR(20) NULL DEFAULT NULL AFTER email",
+        'profile_role' => "ALTER TABLE users ADD COLUMN profile_role VARCHAR(30) NULL DEFAULT NULL AFTER account_type",
+        'engagement_stage' => "ALTER TABLE users ADD COLUMN engagement_stage VARCHAR(20) NULL DEFAULT NULL AFTER profile_role",
+        'preferred_category_ids' => "ALTER TABLE users ADD COLUMN preferred_category_ids TEXT NULL AFTER engagement_stage",
+        'onboarding_completed_at' => "ALTER TABLE users ADD COLUMN onboarding_completed_at DATETIME NULL DEFAULT NULL AFTER preferred_category_ids"
+    ];
+
+    $checked = true;
+
+    foreach ($columnDefinitions as $column => $sql) {
+        if (!dbColumnExists($conn, 'users', $column) && !mysqli_query($conn, $sql)) {
+            $checked = false;
+        }
+    }
+
+    return $checked;
+}
+
+function ensurePostMediaSchema($conn) {
+    static $checked = null;
+
+    if (!$conn || !dbTableExists($conn, 'posts')) {
+        return false;
+    }
+
+    if ($checked !== null) {
+        return $checked;
+    }
+
+    $columnDefinitions = [
+        'media_type' => "ALTER TABLE posts ADD COLUMN media_type ENUM('image','video') NULL DEFAULT 'image' AFTER is_featured",
+        'video_source' => "ALTER TABLE posts ADD COLUMN video_source ENUM('embed','upload') NULL DEFAULT NULL AFTER media_type",
+        'video_provider' => "ALTER TABLE posts ADD COLUMN video_provider VARCHAR(20) NULL DEFAULT NULL AFTER video_source",
+        'video_url' => "ALTER TABLE posts ADD COLUMN video_url VARCHAR(255) NULL DEFAULT NULL AFTER video_provider"
+    ];
+
+    $checked = true;
+
+    foreach ($columnDefinitions as $column => $sql) {
+        if (!dbColumnExists($conn, 'posts', $column) && !mysqli_query($conn, $sql)) {
+            $checked = false;
+        }
+    }
+
+    if (dbColumnExists($conn, 'posts', 'media_type')) {
+        mysqli_query($conn, "ALTER TABLE posts MODIFY COLUMN media_type ENUM('image','video') NULL DEFAULT 'image'");
+    }
+
+    return $checked;
+}
+
+function normalizeOnboardingAccountType($value) {
+    $value = strtolower(trim((string) $value));
+
+    $allowed = ['poster', 'seeker', 'both'];
+    return in_array($value, $allowed, true) ? $value : null;
+}
+
+function normalizeOnboardingRole($value) {
+    $value = strtolower(trim((string) $value));
+
+    $allowed = ['founder', 'developer', 'investor', 'creative'];
+    return in_array($value, $allowed, true) ? $value : null;
+}
+
+function normalizeOnboardingStage($value) {
+    $value = strtolower(trim((string) $value));
+
+    $allowed = ['exploring', 'ready', 'urgent'];
+    return in_array($value, $allowed, true) ? $value : null;
+}
+
+function parsePreferredCategoryIds($value, $limit = 4) {
+    $rawIds = is_array($value) ? $value : explode(',', (string) $value);
+    $categoryIds = [];
+
+    foreach ($rawIds as $rawId) {
+        $id = (int) $rawId;
+        if ($id > 0) {
+            $categoryIds[$id] = $id;
+        }
+    }
+
+    $categoryIds = array_values($categoryIds);
+
+    if ($limit > 0) {
+        $categoryIds = array_slice($categoryIds, 0, $limit);
+    }
+
+    return $categoryIds;
+}
+
+function getOnboardingAccountTypeLabel($value) {
+    $map = [
+        'poster' => 'Poster',
+        'seeker' => 'Seeker',
+        'both' => 'Both'
+    ];
+
+    return $map[normalizeOnboardingAccountType($value)] ?? null;
+}
+
+function getOnboardingRoleLabel($value) {
+    $map = [
+        'founder' => 'Founder',
+        'developer' => 'Developer',
+        'investor' => 'Investor',
+        'creative' => 'Creative'
+    ];
+
+    return $map[normalizeOnboardingRole($value)] ?? null;
+}
+
+function getOnboardingStageLabel($value) {
+    $map = [
+        'exploring' => 'Exploring ideas',
+        'ready' => 'Ready to connect',
+        'urgent' => 'Urgent'
+    ];
+
+    return $map[normalizeOnboardingStage($value)] ?? null;
+}
+
+function getOnboardingState($user) {
+    $categoryIds = parsePreferredCategoryIds($user['preferred_category_ids'] ?? '');
+    $accountType = normalizeOnboardingAccountType($user['account_type'] ?? null);
+    $profileRole = normalizeOnboardingRole($user['profile_role'] ?? null);
+    $engagementStage = normalizeOnboardingStage($user['engagement_stage'] ?? null);
+
+    return [
+        'account_type' => $accountType,
+        'account_type_label' => getOnboardingAccountTypeLabel($accountType),
+        'profile_role' => $profileRole,
+        'profile_role_label' => getOnboardingRoleLabel($profileRole),
+        'engagement_stage' => $engagementStage,
+        'engagement_stage_label' => getOnboardingStageLabel($engagementStage),
+        'preferred_category_ids' => $categoryIds,
+        'category_count' => count($categoryIds),
+        'completed_at' => $user['onboarding_completed_at'] ?? null,
+    ];
+}
+
+function isUserOnboardingComplete($user) {
+    if (empty($user) || !empty($user['is_admin'])) {
+        return true;
+    }
+
+    $state = getOnboardingState($user);
+
+    return $state['account_type'] !== null
+        && $state['profile_role'] !== null
+        && $state['engagement_stage'] !== null
+        && $state['category_count'] > 0
+        && !empty($state['completed_at']);
+}
+
 function getSettingsRow($conn) {
     static $settingsCache = null;
 
@@ -79,6 +247,390 @@ function getSettingValue($conn, $column, $default = null) {
 function isSettingEnabled($conn, $column, $default = true) {
     $value = getSettingValue($conn, $column, $default ? 1 : 0);
     return (int) $value === 1;
+}
+
+function normalizePostMediaType($value) {
+    $value = strtolower(trim((string) $value));
+    return in_array($value, ['image', 'video'], true) ? $value : 'image';
+}
+
+function normalizePostVideoSource($value) {
+    $value = strtolower(trim((string) $value));
+    return in_array($value, ['embed', 'upload'], true) ? $value : '';
+}
+
+function normalizePostVideoProvider($value) {
+    $value = strtolower(trim((string) $value));
+    return in_array($value, ['youtube', 'vimeo', 'upload'], true) ? $value : '';
+}
+
+function sanitizeExternalHttpUrl($value) {
+    $value = trim((string) $value);
+
+    if ($value === '' || !filter_var($value, FILTER_VALIDATE_URL)) {
+        return '';
+    }
+
+    $scheme = strtolower((string) parse_url($value, PHP_URL_SCHEME));
+    if (!in_array($scheme, ['http', 'https'], true)) {
+        return '';
+    }
+
+    return $value;
+}
+
+function extractYouTubeVideoId($value) {
+    $value = trim((string) $value);
+
+    if ($value === '') {
+        return null;
+    }
+
+    if (preg_match('/^[A-Za-z0-9_-]{11}$/', $value) === 1) {
+        return $value;
+    }
+
+    $url = sanitizeExternalHttpUrl($value);
+    if ($url === '') {
+        return null;
+    }
+
+    $host = strtolower((string) parse_url($url, PHP_URL_HOST));
+    $path = trim((string) parse_url($url, PHP_URL_PATH), '/');
+    $query = (string) parse_url($url, PHP_URL_QUERY);
+
+    if (strpos($host, 'youtu.be') !== false) {
+        $segments = explode('/', $path);
+        $candidate = $segments[0] ?? '';
+        return preg_match('/^[A-Za-z0-9_-]{11}$/', $candidate) === 1 ? $candidate : null;
+    }
+
+    if (strpos($host, 'youtube.com') === false) {
+        return null;
+    }
+
+    if ($path === 'watch') {
+        parse_str($query, $params);
+        $candidate = trim((string) ($params['v'] ?? ''));
+        return preg_match('/^[A-Za-z0-9_-]{11}$/', $candidate) === 1 ? $candidate : null;
+    }
+
+    $segments = array_values(array_filter(explode('/', $path)));
+    if (count($segments) >= 2 && in_array($segments[0], ['embed', 'shorts', 'live'], true)) {
+        $candidate = trim((string) $segments[1]);
+        return preg_match('/^[A-Za-z0-9_-]{11}$/', $candidate) === 1 ? $candidate : null;
+    }
+
+    return null;
+}
+
+function extractVimeoVideoId($value) {
+    $value = trim((string) $value);
+
+    if ($value === '') {
+        return null;
+    }
+
+    if (preg_match('/^\d+$/', $value) === 1) {
+        return $value;
+    }
+
+    $url = sanitizeExternalHttpUrl($value);
+    if ($url === '') {
+        return null;
+    }
+
+    $host = strtolower((string) parse_url($url, PHP_URL_HOST));
+    if (strpos($host, 'vimeo.com') === false) {
+        return null;
+    }
+
+    $path = trim((string) parse_url($url, PHP_URL_PATH), '/');
+    $segments = array_values(array_filter(explode('/', $path)));
+
+    for ($i = count($segments) - 1; $i >= 0; $i--) {
+        if (preg_match('/^\d+$/', $segments[$i]) === 1) {
+            return $segments[$i];
+        }
+    }
+
+    return null;
+}
+
+function parseExternalVideoReference($value) {
+    $youtubeId = extractYouTubeVideoId($value);
+    if ($youtubeId !== null) {
+        return [
+            'is_valid' => true,
+            'provider' => 'youtube',
+            'video_id' => $youtubeId,
+            'canonical_url' => 'https://www.youtube.com/watch?v=' . rawurlencode($youtubeId),
+            'embed_url' => 'https://www.youtube.com/embed/' . rawurlencode($youtubeId) . '?rel=0&modestbranding=1',
+            'poster_url' => 'https://i.ytimg.com/vi/' . rawurlencode($youtubeId) . '/hqdefault.jpg',
+            'provider_label' => 'YouTube',
+        ];
+    }
+
+    $vimeoId = extractVimeoVideoId($value);
+    if ($vimeoId !== null) {
+        return [
+            'is_valid' => true,
+            'provider' => 'vimeo',
+            'video_id' => $vimeoId,
+            'canonical_url' => 'https://vimeo.com/' . rawurlencode($vimeoId),
+            'embed_url' => 'https://player.vimeo.com/video/' . rawurlencode($vimeoId),
+            'poster_url' => '',
+            'provider_label' => 'Vimeo',
+        ];
+    }
+
+    return [
+        'is_valid' => false,
+        'provider' => '',
+        'video_id' => '',
+        'canonical_url' => '',
+        'embed_url' => '',
+        'poster_url' => '',
+        'provider_label' => '',
+    ];
+}
+
+function getPostUploadsBaseDirectory() {
+    return dirname(__DIR__) . '/uploads';
+}
+
+function normalizePostUploadPath($value) {
+    $value = trim(str_replace('\\', '/', (string) $value));
+
+    if ($value === '') {
+        return '';
+    }
+
+    if (strpos($value, 'account/uploads/') === 0) {
+        $value = substr($value, strlen('account/uploads/'));
+    }
+
+    $value = ltrim($value, '/');
+
+    if ($value === '' || strpos($value, '..') !== false) {
+        return '';
+    }
+
+    return $value;
+}
+
+function getPostUploadFilesystemPath($value) {
+    $relativePath = normalizePostUploadPath($value);
+    if ($relativePath === '') {
+        return '';
+    }
+
+    return getPostUploadsBaseDirectory() . '/' . $relativePath;
+}
+
+function getPostUploadUrl($value) {
+    $value = trim((string) $value);
+
+    if ($value === '') {
+        return '';
+    }
+
+    if (preg_match('/^(https?:)?\/\//i', $value)) {
+        return $value;
+    }
+
+    $relativePath = normalizePostUploadPath($value);
+    return $relativePath !== '' ? 'account/uploads/' . $relativePath : '';
+}
+
+function deletePostUploadAsset($value) {
+    $path = getPostUploadFilesystemPath($value);
+    if ($path === '' || !file_exists($path)) {
+        return false;
+    }
+
+    return unlink($path);
+}
+
+function detectUploadedFileMimeType($tmpPath) {
+    if (!is_string($tmpPath) || $tmpPath === '' || !file_exists($tmpPath)) {
+        return '';
+    }
+
+    if (function_exists('finfo_open')) {
+        $finfo = finfo_open(FILEINFO_MIME_TYPE);
+        if ($finfo) {
+            $mime = finfo_file($finfo, $tmpPath);
+            finfo_close($finfo);
+
+            if (is_string($mime)) {
+                return $mime;
+            }
+        }
+    }
+
+    if (function_exists('mime_content_type')) {
+        $mime = mime_content_type($tmpPath);
+        return is_string($mime) ? $mime : '';
+    }
+
+    return '';
+}
+
+function storePostUpload(array $file, $subdirectory, $prefix, array $allowedMimeExtensions, $maxSizeBytes) {
+    if (($file['error'] ?? UPLOAD_ERR_NO_FILE) !== UPLOAD_ERR_OK) {
+        throw new RuntimeException('Upload failed.');
+    }
+
+    if (($file['size'] ?? 0) > $maxSizeBytes) {
+        throw new RuntimeException('Uploaded file exceeds the allowed size.');
+    }
+
+    $mime = detectUploadedFileMimeType((string) ($file['tmp_name'] ?? ''));
+    if ($mime === '' || !isset($allowedMimeExtensions[$mime])) {
+        throw new RuntimeException('Uploaded file format is not supported.');
+    }
+
+    $subdirectory = trim(str_replace('\\', '/', (string) $subdirectory), '/');
+    $baseDirectory = getPostUploadsBaseDirectory();
+    $targetDirectory = $subdirectory !== '' ? $baseDirectory . '/' . $subdirectory : $baseDirectory;
+
+    if (!is_dir($targetDirectory) && !mkdir($targetDirectory, 0775, true) && !is_dir($targetDirectory)) {
+        throw new RuntimeException('Could not prepare upload directory.');
+    }
+
+    $extension = $allowedMimeExtensions[$mime];
+    $filename = uniqid($prefix, true) . '.' . $extension;
+    $destination = $targetDirectory . '/' . $filename;
+
+    if (!move_uploaded_file((string) $file['tmp_name'], $destination)) {
+        throw new RuntimeException('Could not store uploaded file.');
+    }
+
+    return [
+        'stored_path' => ($subdirectory !== '' ? $subdirectory . '/' : '') . $filename,
+        'filesystem_path' => $destination,
+        'public_url' => 'account/uploads/' . ($subdirectory !== '' ? $subdirectory . '/' : '') . $filename,
+        'mime' => $mime,
+    ];
+}
+
+function getPostMediaDetails($post) {
+    $mediaType = normalizePostMediaType($post['media_type'] ?? 'image');
+    $posterUrl = getPostUploadUrl($post['thumbnail'] ?? '');
+    $videoSource = normalizePostVideoSource($post['video_source'] ?? '');
+    $videoProvider = normalizePostVideoProvider($post['video_provider'] ?? '');
+    $rawVideoValue = trim((string) ($post['video_url'] ?? ''));
+    $videoEmbedUrl = '';
+    $videoFileUrl = '';
+    $canonicalUrl = '';
+    $videoId = '';
+
+    if ($mediaType === 'video') {
+        if (($videoSource === 'upload' || $videoProvider === 'upload') && $rawVideoValue !== '') {
+            $videoSource = 'upload';
+            $videoProvider = 'upload';
+            $videoFileUrl = getPostUploadUrl($rawVideoValue);
+            $canonicalUrl = $videoFileUrl;
+        } else {
+            if ($videoSource === 'embed' && in_array($videoProvider, ['youtube', 'vimeo'], true) && $rawVideoValue !== '') {
+                $videoId = $rawVideoValue;
+            } else {
+                $parsedVideo = parseExternalVideoReference($rawVideoValue);
+                if ($parsedVideo['is_valid']) {
+                    $videoSource = 'embed';
+                    $videoProvider = $parsedVideo['provider'];
+                    $videoId = $parsedVideo['video_id'];
+                    $videoEmbedUrl = $parsedVideo['embed_url'];
+                    $canonicalUrl = $parsedVideo['canonical_url'];
+
+                    if ($posterUrl === '' && $parsedVideo['poster_url'] !== '') {
+                        $posterUrl = $parsedVideo['poster_url'];
+                    }
+                } elseif ($rawVideoValue !== '' && getPostUploadUrl($rawVideoValue) !== '') {
+                    $videoSource = 'upload';
+                    $videoProvider = 'upload';
+                    $videoFileUrl = getPostUploadUrl($rawVideoValue);
+                    $canonicalUrl = $videoFileUrl;
+                }
+            }
+
+            if ($videoId !== '' && $videoEmbedUrl === '') {
+                if ($videoProvider === 'youtube') {
+                    $videoEmbedUrl = 'https://www.youtube.com/embed/' . rawurlencode($videoId) . '?rel=0&modestbranding=1';
+                    $canonicalUrl = 'https://www.youtube.com/watch?v=' . rawurlencode($videoId);
+                    if ($posterUrl === '') {
+                        $posterUrl = 'https://i.ytimg.com/vi/' . rawurlencode($videoId) . '/hqdefault.jpg';
+                    }
+                } elseif ($videoProvider === 'vimeo') {
+                    $videoEmbedUrl = 'https://player.vimeo.com/video/' . rawurlencode($videoId);
+                    $canonicalUrl = 'https://vimeo.com/' . rawurlencode($videoId);
+                }
+            }
+        }
+    }
+
+    $providerLabels = [
+        'youtube' => 'YouTube',
+        'vimeo' => 'Vimeo',
+        'upload' => 'Uploaded video',
+    ];
+
+    return [
+        'media_type' => $mediaType,
+        'is_video' => $mediaType === 'video',
+        'is_image' => $mediaType === 'image',
+        'poster_url' => $posterUrl,
+        'has_visual_preview' => $posterUrl !== '' || $mediaType === 'video',
+        'video_source' => $videoSource,
+        'video_provider' => $videoProvider,
+        'video_provider_label' => $providerLabels[$videoProvider] ?? ($mediaType === 'video' ? 'Video' : ''),
+        'video_id' => $videoId,
+        'video_embed_url' => $videoEmbedUrl,
+        'video_file_url' => $videoFileUrl,
+        'canonical_url' => $canonicalUrl,
+        'is_embed' => $videoEmbedUrl !== '',
+        'is_uploaded_video' => $videoFileUrl !== '',
+    ];
+}
+
+function getPostVideoInputValue($post) {
+    $media = getPostMediaDetails($post);
+    return $media['is_embed'] ? $media['canonical_url'] : '';
+}
+
+function renderPostMediaPreview($post, $linkUrl, $title, $imageBadgeText = 'Open story', $videoBadgeText = 'Watch video') {
+    $media = getPostMediaDetails($post);
+    if (!$media['has_visual_preview']) {
+        return '';
+    }
+
+    $safeTitle = htmlspecialchars((string) $title, ENT_QUOTES, 'UTF-8');
+    $safeLink = htmlspecialchars((string) $linkUrl, ENT_QUOTES, 'UTF-8');
+    $badgeText = $media['is_video'] ? $videoBadgeText : $imageBadgeText;
+    $badgeIcon = $media['is_video'] ? 'mdi mdi-play-circle-outline' : 'mdi mdi-arrow-top-right';
+
+    if ($media['poster_url'] !== '') {
+        $safePoster = htmlspecialchars($media['poster_url'], ENT_QUOTES, 'UTF-8');
+
+        return '<a href="' . $safeLink . '" class="modern-post-card__media">'
+            . '<img src="' . $safePoster . '" class="modern-post-card__image" alt="' . $safeTitle . '">'
+            . '<span class="modern-post-card__media-badge"><i class="' . $badgeIcon . '"></i>' . htmlspecialchars($badgeText, ENT_QUOTES, 'UTF-8') . '</span>'
+            . '</a>';
+    }
+
+    if (!$media['is_video']) {
+        return '';
+    }
+
+    $fallbackLabel = htmlspecialchars($media['video_provider_label'], ENT_QUOTES, 'UTF-8');
+
+    return '<a href="' . $safeLink . '" class="modern-post-card__media">'
+        . '<div class="modern-post-card__image" style="display:flex;align-items:center;justify-content:center;min-height:220px;background:linear-gradient(135deg,#0f172a 0%,#2563eb 100%);color:#fff;padding:1.5rem;text-align:center;">'
+        . '<div><i class="mdi mdi-play-circle-outline" style="font-size:2.5rem;display:block;margin-bottom:0.5rem;"></i><span style="font-weight:700;">' . ($fallbackLabel !== '' ? $fallbackLabel : 'Video') . '</span></div>'
+        . '</div>'
+        . '<span class="modern-post-card__media-badge"><i class="' . $badgeIcon . '"></i>' . htmlspecialchars($videoBadgeText, ENT_QUOTES, 'UTF-8') . '</span>'
+        . '</a>';
 }
 
 function getEmailTemplateDefaults() {

@@ -1,5 +1,5 @@
 
-
+<?php $pageTitle = 'Privacy Policy'; ?>
 <body class="nk-body">
     <div class="nk-app-root">
         <div class="bg-mask-wraper mt-22 h-800px">
@@ -16,7 +16,7 @@
                             <div class="col-xl-8" data-gsap-in='{"opacity": 0, "y": 50}' data-gsap-delay="3.5">
                                 <div class="nk-entry">
                                     <h5>1. Information We Collect</h5>
-                                    <p>We collect various types of personal information to provide, maintain, and improve our CopyWriter AI services. This includes:</p>
+                                    <p>We collect various types of personal information to provide, maintain, and improve our IdeaHub services. This includes:</p>
                                     <ul>
                                         <li><strong>Account Information:</strong> When you create an account, we collect your name, email address, password, company name, and job title.</li>
                                         <li><strong>Usage Data:</strong> We track how you use our platform, including features accessed, content generated, time spent, and interactions with our service.</li>
@@ -85,21 +85,21 @@
                                         <li>You can request deletion of your data at any time, subject to legal retention requirements.</li>
                                     </ul>
                                     <h5>8. Children's Privacy</h5>
-                                    <p>CopyWriter AI is not intended for users under the age of 13. We do not knowingly collect personal information from children under 13. If we become aware that a child under 13 has provided us with personal information, we will delete such information promptly and terminate the child's account. Parents or guardians who believe their child has provided us with information should contact us immediately.</p>
+                                    <p>IdeaHub is not intended for users under the age of 13. We do not knowingly collect personal information from children under 13. If we become aware that a child under 13 has provided us with personal information, we will delete such information promptly and terminate the child's account. Parents or guardians who believe their child has provided us with information should contact us immediately.</p>
                                     <h5>9. Third-Party Links</h5>
                                     <p>Our platform may contain links to third-party websites and services that are not operated by us. This Privacy Policy does not apply to third-party websites, and we are not responsible for their privacy practices. We encourage you to review the privacy policies of any third-party services before providing your personal information.</p>
                                     <h5>10. International Data Transfers</h5>
-                                    <p>Your personal information may be transferred to, stored in, and processed in countries other than your country of residence. These countries may have data protection laws that differ from your home country. By using CopyWriter AI, you consent to the transfer of your information to countries outside your country of residence, which may not have the same data protection laws.</p>
+                                    <p>Your personal information may be transferred to, stored in, and processed in countries other than your country of residence. These countries may have data protection laws that differ from your home country. By using IdeaHub, you consent to the transfer of your information to countries outside your country of residence, which may not have the same data protection laws.</p>
                                     <h5>11. Contact Us</h5>
                                     <p>If you have any questions about this Privacy Policy, wish to exercise your privacy rights, or would like to file a complaint, please contact us at:</p>
                                     <ul>
-                                        <li><strong>Email:</strong> <a href="cdn-cgi/l/email-protection.html" class="__cf_email__" data-cfemail="ea9a98839c8b8993aa89859a939d98839e8f98c78b83c4898587">[email&#160;protected]</a></li>
-                                        <li><strong>Mailing Address:</strong> CopyWriter AI, Privacy Department, [Your Company Address]</li>
-                                        <li><strong>Data Protection Officer:</strong> <a href="cdn-cgi/l/email-protection.html" class="__cf_email__" data-cfemail="cfabbfa08faca0bfb6b8bda6bbaabde2aea6e1aca0a2">[email&#160;protected]</a></li>
+                                        <li><strong>Email:</strong> [email protected]</li>
+                                        <li><strong>Mailing Address:</strong> IdeaHub, Privacy Department, [Your Company Address]</li>
+                                        <li><strong>Data Protection Officer:</strong> [email protected]</li>
                                     </ul>
                                     <p>We will respond to your request within 30 days of receipt.</p>
                                     <h5>12. Policy Updates</h5>
-                                    <p>We may update this Privacy Policy from time to time to reflect changes in our practices, technology, legal requirements, or other factors. We will notify you of any material changes by posting the updated policy on our website and updating the "Last Updated" date. Your continued use of CopyWriter AI following the posting of revised Privacy Policy means you accept and agree to the changes.</p>
+                                    <p>We may update this Privacy Policy from time to time to reflect changes in our practices, technology, legal requirements, or other factors. We will notify you of any material changes by posting the updated policy on our website and updating the "Last Updated" date. Your continued use of IdeaHub following the posting of revised Privacy Policy means you accept and agree to the changes.</p>
                                 </div>
                             </div>
                         </div>
@@ -160,8 +160,6 @@
     </div>
     <div class="nk-cursor js-cursor"></div>
     <!-- JavaScript -->
-    <script data-cfasync="false" src="cdn-cgi/scripts/5c5dd728/cloudflare-static/email-decode.min.js"></script><script src="assets/js/appb183.js?v120"></script>
-<script>(function(){function c(){var b=a.contentDocument||a.contentWindow.document;if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'9e9931692cba73c1',t:'MTc3NTczNDM2NQ=='};var a=document.createElement('script');a.src='cdn-cgi/challenge-platform/h/b/scripts/jsd/625261456364/maind41d.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script></body>
-
-
+    <script src="assets/js/appb183.js?v120"></script>
+    </body>
 </html>

@@ -1,6 +1,8 @@
 <?php $pageTitle = 'all Post';
 require 'includes/header.php';
 
+ensurePostMediaSchema($connection);
+
 $current_user_id = isset($_SESSION['user-id']) ? (int) $_SESSION['user-id'] : 0;
 $category_id = isset($_GET['id']) ? (int) filter_var($_GET['id'], FILTER_SANITIZE_NUMBER_INT) : 0;
 $category = null;
@@ -96,6 +98,8 @@ if ($category_id > 0) {
                                                                 <?php
                                                                 $authorDisplayName = trim(($post['author_firstname'] ?? '') . ' ' . ($post['author_lastname'] ?? '')) ?: ($post['author_name'] ?? 'Author');
                                                                 $postExcerpt = mb_strimwidth(strip_tags((string) $post['body']), 0, 170, '...');
+                                                                $postMedia = getPostMediaDetails($post);
+                                                                $postCtaLabel = $postMedia['is_video'] ? 'Watch video' : 'Read article';
                                                                 ?>
                                                                 <article class="post-card modern-post-card">
                                                                     <div class="modern-post-card__body">
@@ -130,6 +134,12 @@ if ($category_id > 0) {
                                                                                 <i class="bx bx-comment-dots"></i>
                                                                                 <?= (int) ($post['comment_count'] ?? 0) ?> comments
                                                                             </span>
+                                                                            <?php if ($postMedia['is_video']): ?>
+                                                                                <span class="modern-post-chip">
+                                                                                    <i class="mdi mdi-play-circle-outline"></i>
+                                                                                    <?= htmlspecialchars($postMedia['video_provider_label'], ENT_QUOTES, 'UTF-8') ?>
+                                                                                </span>
+                                                                            <?php endif; ?>
                                                                         </div>
 
                                                                         <h5 class="modern-post-card__title">
@@ -140,15 +150,7 @@ if ($category_id > 0) {
 
                                                                         <p class="modern-post-card__excerpt"><?= htmlspecialchars($postExcerpt) ?></p>
 
-                                                                        <?php if (!empty($post['thumbnail'])): ?>
-                                                                            <a href="postOverview?id=<?= (int) $post['id'] ?>" class="modern-post-card__media">
-                                                                                <img src="account/uploads/<?= htmlspecialchars($post['thumbnail']) ?>" class="modern-post-card__image" alt="<?= htmlspecialchars($post['title']) ?>">
-                                                                                <span class="modern-post-card__media-badge">
-                                                                                    <i class="mdi mdi-arrow-top-right"></i>
-                                                                                    Open story
-                                                                                </span>
-                                                                            </a>
-                                                                        <?php endif; ?>
+                                                                        <?= renderPostMediaPreview($post, 'postOverview?id=' . (int) $post['id'], $post['title']) ?>
 
                                                                         <div class="modern-post-card__footer">
                                                                             <div class="modern-post-card__actions">
@@ -174,7 +176,7 @@ if ($category_id > 0) {
                                                                             </div>
 
                                                                             <a href="postOverview?id=<?= (int) $post['id'] ?>" class="modern-post-readmore">
-                                                                                Read article
+                                                                                <?= htmlspecialchars($postCtaLabel, ENT_QUOTES, 'UTF-8') ?>
                                                                                 <i class="mdi mdi-arrow-right"></i>
                                                                             </a>
                                                                         </div>

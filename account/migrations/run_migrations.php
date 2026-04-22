@@ -1,9 +1,5 @@
 <?php
-/*
- * Database Migration Setup for Comment System
- * This script adds the necessary tables and columns for the Reddit-style comment system
- * Run this script once to initialize the database structure
- */
+
 
 require_once __DIR__ . '/../config/database.php';
 
@@ -114,6 +110,29 @@ $migration_functions = [
         }
 
         echo "✓ All indexes processed<br>";
+    },
+    'add_post_media_support' => function($connection) {
+        $columns_to_add = [
+            'media_type' => "ALTER TABLE posts ADD COLUMN media_type ENUM('image','video') NULL DEFAULT 'image' AFTER is_featured",
+            'video_source' => "ALTER TABLE posts ADD COLUMN video_source ENUM('embed','upload') NULL DEFAULT NULL AFTER media_type",
+            'video_provider' => "ALTER TABLE posts ADD COLUMN video_provider VARCHAR(20) NULL DEFAULT NULL AFTER video_source",
+            'video_url' => "ALTER TABLE posts ADD COLUMN video_url VARCHAR(255) NULL DEFAULT NULL AFTER video_provider"
+        ];
+
+        foreach ($columns_to_add as $column_name => $sql) {
+            $result = $connection->query("SHOW COLUMNS FROM posts LIKE '$column_name'");
+            if ($result && $result->num_rows === 0) {
+                if (!$connection->query($sql)) {
+                    throw new Exception("Error adding column $column_name to posts: " . $connection->error);
+                }
+                echo "✓ Added column $column_name to posts table<br>";
+            } else {
+                echo "✓ Column $column_name already exists in posts table<br>";
+            }
+        }
+
+        $connection->query("ALTER TABLE posts MODIFY COLUMN media_type ENUM('image','video') NULL DEFAULT 'image'");
+        echo "✓ Post media schema processed<br>";
     }
 ];
 

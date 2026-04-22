@@ -1,9 +1,5 @@
 <?php
-/*
- * Comment Interactions Handler
- * Handles likes, dislikes, and shares on comments
- * Similar to post interactions but for comments
- */
+
 
 header('Content-Type: application/json');
 

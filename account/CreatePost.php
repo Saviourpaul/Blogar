@@ -1,6 +1,8 @@
 <?php $pageTitle = 'CreatePost';
 require 'includes/header.php';
 
+ensurePostMediaSchema($connection);
+
 $appBasePath = rtrim(str_replace('\\', '/', dirname($_SERVER['SCRIPT_NAME'] ?? '')), '/');
 if ($appBasePath === '/' || $appBasePath === '.') {
     $appBasePath = '';
@@ -31,13 +33,16 @@ if (!$is_create_post_enabled) {
 $query = "SELECT * FROM categories";
 $categories = mysqli_query($connection, $query);
 
-$title = $_SESSION['add-post-data']['title'] ?? null;
-$body = $_SESSION['add-post-data']['body'] ?? null;
+$draft = $_SESSION['add-post-data'] ?? [];
+$title = $draft['title'] ?? '';
+$body = $draft['body'] ?? '';
+$selected_category = (int) ($draft['category'] ?? 0);
+$media_type = normalizePostMediaType($draft['media_type'] ?? 'image');
+$video_source = normalizePostVideoSource($draft['video_source'] ?? 'embed');
+$video_link = trim((string) ($draft['video_link'] ?? $draft['video_url'] ?? ''));
+$is_featured_checked = array_key_exists('is_featured', $draft) ? !empty($draft['is_featured']) : !empty($_SESSION['is_admin']);
 
 unset($_SESSION['add-post-data']);
-// get video_url from $_SESSION['add-post-data']
-$video_url = $_SESSION['add-post-data']['video_url'] ?? null;
-unset($_SESSION['add-post-data']['video_url']);
 
 
 
@@ -84,38 +89,74 @@ unset($_SESSION['add-post-data']['video_url']);
                                             <div class="col-lg-8">
                                                 <div class="row g-4">
                                                     <div class="col-md-6">
-                                                        <label for="title" class="form-label">Title </label>
-                                                        <input type="text" name="title" value="<?= htmlspecialchars((string) $title, ENT_QUOTES, 'UTF-8') ?>"
-                                                            class="form-control" placeholder="Enter Title">
+                                                        <label for="title" class="form-label">Title</label>
+                                                        <input type="text" name="title" id="title"
+                                                            value="<?= htmlspecialchars((string) $title, ENT_QUOTES, 'UTF-8') ?>"
+                                                            class="form-control" placeholder="Enter Title" required>
                                                     </div>
+
+                                                    <div class="col-md-6">
+                                                        <label for="category" class="form-label">Category *</label>
+                                                        <select name="category" id="category" class="form-select" required>
+                                                            <option value="" disabled <?= $selected_category <= 0 ? 'selected' : '' ?>>Select Category</option>
+                                                            <?php while ($category = mysqli_fetch_assoc($categories)): ?>
+                                                                <option value="<?= (int) $category['id'] ?>" <?= $selected_category === (int) $category['id'] ? 'selected' : '' ?>>
+                                                                    <?= htmlspecialchars($category['title'], ENT_QUOTES, 'UTF-8') ?>
+                                                                </option>
+                                                            <?php endwhile ?>
+                                                        </select>
+                                                    </div>
+
+                                                    <div class="col-md-6">
+                                                        <label for="media_type" class="form-label">Post format *</label>
+                                                        <select name="media_type" id="media_type" class="form-select" required>
+                                                            <option value="image" <?= $media_type === 'image' ? 'selected' : '' ?>>Image post</option>
+                                                            <option value="video" <?= $media_type === 'video' ? 'selected' : '' ?>>Video post</option>
+                                                        </select>
+                                                    </div>
+
+                                                    <div class="col-md-6" id="video-source-group" <?= $media_type === 'video' ? '' : 'hidden' ?>>
+                                                        <label for="video_source" class="form-label">Video source *</label>
+                                                        <select name="video_source" id="video_source" class="form-select">
+                                                            <option value="embed" <?= $video_source === 'embed' ? 'selected' : '' ?>>URL</option>
+                                                            <option value="upload" <?= $video_source === 'upload' ? 'selected' : '' ?>>Upload video file</option>
+                                                        </select>
+                                                    </div>
+
                                                     <div class="col-12">
                                                         <label for="post-body-editor" class="form-label">Description</label>
                                                         <textarea class="form-control" id="post-body-editor" rows="10" name="body" placeholder="Description"><?= htmlspecialchars((string) $body, ENT_QUOTES, 'UTF-8') ?></textarea>
                                                     </div>
 
-                                                   
-                                                   <div class="col-md-6">
-                                                        <label for="role" class="form-label">Category *</label>
-                                                        <select name="category" id="category" class="form-select" required>
-                                                            <option selected disabled>Select Category</option>
-                                                            <?php while ($category = mysqli_fetch_assoc($categories)): ?>
-                                                            
-                                                            <option value="<?= $category['id'] ?>"><?= $category['title'] ?></option>
-                                                             <?php endwhile ?>
-                                                        </select>
+                                                    <div class="col-12" id="video-link-group" <?= $media_type === 'video' && $video_source === 'embed' ? '' : 'hidden' ?>>
+                                                        <label for="video_link" class="form-label">YouTube or Vimeo URL</label>
+                                                        <input
+                                                            type="url"
+                                                            name="video_link"
+                                                            id="video_link"
+                                                            value="<?= htmlspecialchars($video_link, ENT_QUOTES, 'UTF-8') ?>"
+                                                            class="form-control"
+                                                            placeholder="https://www.youtube.com/watch?v=... or https://vimeo.com/...">
+                                                        <div class="form-text">Paste a YouTube or Vimeo link. We store the provider and video ID for clean embeds.</div>
                                                     </div>
-                                                    
-                                                <div class="md-4">
-                                                     <?php if (isset($_SESSION['is_admin']) && $_SESSION['is_admin'] == 1): ?>
-                                                        
-                                                            <input type="checkbox" name="is_featured" value="1" id="is_featured" checked>
-                                                            <label for="is_featured">featured</label>
+
+                                                    <?php if (isset($_SESSION['is_admin']) && $_SESSION['is_admin'] == 1): ?>
+                                                        <div class="col-12">
+                                                            <div class="form-check form-switch pt-2">
+                                                                <input
+                                                                    class="form-check-input"
+                                                                    type="checkbox"
+                                                                    name="is_featured"
+                                                                    value="1"
+                                                                    id="is_featured"
+                                                                    <?= $is_featured_checked ? 'checked' : '' ?>>
+                                                                <label class="form-check-label" for="is_featured">Featured post</label>
+                                                            </div>
                                                         </div>
                                                     <?php endif ?>
-                                                    
 
                                                     <div class="col-md-6">
-                                                        <label for="addPatient"
+                                                        <label for="thumbnail-input"
                                                             class="form-label border h-28 d-flex justify-content-center align-items-center flex-column gap-1 bg-body-tertiary rounded-2 cursor-pointer text-center">
                                                             <svg xmlns="http://www.w3.org/2000/svg" width="24"
                                                                 height="24" viewBox="0 0 24 24"
@@ -132,19 +173,40 @@ unset($_SESSION['add-post-data']['video_url']);
                                                                     </g>
                                                                 </g>
                                                             </svg>
-                                                            <h6>Upload your Image</h6>
-                                                            <input type="file"  name="thumbnail"  class="d-none" id="addPatient"
-                                                               >
+                                                            <h6 id="thumbnail-upload-title">Upload thumbnail image</h6>
+                                                            <p class="mb-0 text-muted small px-3" id="thumbnail-upload-hint">Required for image posts. For video posts this becomes the poster image shown before play.</p>
+                                                            <input
+                                                                type="file"
+                                                                name="thumbnail"
+                                                                accept="image/png,image/jpeg"
+                                                                class="d-none"
+                                                                id="thumbnail-input">
+                                                        </label>
+                                                    </div>
+
+                                                    <div class="col-md-6" id="video-upload-group" <?= $media_type === 'video' && $video_source === 'upload' ? '' : 'hidden' ?>>
+                                                        <label for="video-file-input"
+                                                            class="form-label border h-28 d-flex justify-content-center align-items-center flex-column gap-1 bg-body-tertiary rounded-2 cursor-pointer text-center">
+                                                            <i class="mdi mdi-video-outline fs-2"></i>
+                                                            <h6>Upload your video file</h6>
+                                                            <p class="mb-0 text-muted small px-3">MP4, WebM, or OGG up to 50MB.</p>
+                                                            <input
+                                                                type="file"
+                                                                name="video_file"
+                                                                accept="video/mp4,video/webm,video/ogg"
+                                                                class="d-none"
+                                                                id="video-file-input">
                                                         </label>
                                                     </div>
                                                 </div>
+
                                                 <br>
-                                                    
-                                                    <div class="md-4">
-                                                        <button type="submit" name="submit"
-                                                            class="btn btn-secondary">Add
-                                                            Post</button>
-                                                    </div>
+
+                                                <div class="md-4">
+                                                    <button type="submit" name="submit"
+                                                        class="btn btn-secondary">Add Post</button>
+                                                </div>
+                                            </div>
                                         </form>
                                     </div>
                                 </div>
@@ -254,6 +316,60 @@ unset($_SESSION['add-post-data']['video_url']);
                     tinymce.triggerSave();
                 });
             }
+
+            const mediaTypeInput = document.getElementById("media_type");
+            const videoSourceInput = document.getElementById("video_source");
+            const videoSourceGroup = document.getElementById("video-source-group");
+            const videoLinkGroup = document.getElementById("video-link-group");
+            const videoUploadGroup = document.getElementById("video-upload-group");
+            const videoLinkInput = document.getElementById("video_link");
+            const videoFileInput = document.getElementById("video-file-input");
+            const thumbnailInput = document.getElementById("thumbnail-input");
+            const thumbnailTitle = document.getElementById("thumbnail-upload-title");
+            const thumbnailHint = document.getElementById("thumbnail-upload-hint");
+
+            function syncMediaForm() {
+                const isVideo = mediaTypeInput && mediaTypeInput.value === "video";
+                const source = isVideo && videoSourceInput ? videoSourceInput.value : "";
+
+                if (videoSourceGroup) {
+                    videoSourceGroup.hidden = !isVideo;
+                }
+
+                if (videoLinkGroup) {
+                    videoLinkGroup.hidden = !isVideo || source !== "embed";
+                }
+
+                if (videoUploadGroup) {
+                    videoUploadGroup.hidden = !isVideo || source !== "upload";
+                }
+
+                if (videoLinkInput) {
+                    videoLinkInput.required = isVideo && source === "embed";
+                }
+
+                if (videoFileInput) {
+                    videoFileInput.required = isVideo && source === "upload";
+                }
+
+                if (thumbnailInput) {
+                    thumbnailInput.required = !isVideo;
+                }
+
+                if (thumbnailTitle) {
+                    thumbnailTitle.textContent = isVideo ? "Upload poster image" : "Upload thumbnail image";
+                }
+
+                if (thumbnailHint) {
+                    thumbnailHint.textContent = isVideo
+                        ? "Optional, but recommended. This poster image appears before the video starts."
+                        : "Required for image posts. JPG and PNG only.";
+                }
+            }
+
+            mediaTypeInput?.addEventListener("change", syncMediaForm);
+            videoSourceInput?.addEventListener("change", syncMediaForm);
+            syncMediaForm();
         });
     </script>
 

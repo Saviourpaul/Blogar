@@ -84,7 +84,10 @@ if ($parent_id > 0) {
     $parentComment = $stmt->get_result()->fetch_assoc();
     
     if (!$parentComment) {
-        $parent_id = 0; 
+        $_SESSION['comments-error'] = 'That comment is no longer available for replies.';
+        $stmt->close();
+        header("Location: $redirect_url");
+        exit();
     } elseif ($commentHasDeletedAt && !empty($parentComment['deleted_at'])) {
         $_SESSION['comments-error'] = 'That comment is no longer available for replies.';
         $stmt->close();
@@ -129,7 +132,54 @@ if ($commentHasUserId && $commentHasEditExpiresAt) {
 if ($stmt->execute()) {
     $newCommentId = (int) $stmt->insert_id;
     $_SESSION['comments-success'] = 'Comment posted successfully!';
-    $redirect_url = 'postOverview?id=' . $post_id . '#comment-' . $newCommentId;
+    $commentPath = [];
+
+    if ($parent_id > 0) {
+        $cursorId = $parent_id;
+        $visited = [];
+        $ancestorStmt = $connection->prepare("
+            SELECT id, COALESCE(parent_id, 0) AS parent_id
+            FROM comments
+            WHERE id = ? AND post_id = ?
+            LIMIT 1
+        ");
+
+        while ($cursorId > 0 && !isset($visited[$cursorId])) {
+            $visited[$cursorId] = true;
+            $ancestorStmt->bind_param('ii', $cursorId, $post_id);
+            $ancestorStmt->execute();
+            $ancestorRow = $ancestorStmt->get_result()->fetch_assoc();
+
+            if (!$ancestorRow) {
+                break;
+            }
+
+            array_unshift($commentPath, $cursorId);
+            $cursorId = (int) ($ancestorRow['parent_id'] ?? 0);
+        }
+
+        $ancestorStmt->close();
+    }
+
+    $sortContext = strtolower(trim((string) ($_POST['comment_sort_context'] ?? 'recent')));
+    $sortContext = $sortContext === 'oldest' ? 'oldest' : 'recent';
+    $pageContext = max(1, (int) ($_POST['comment_page_context'] ?? 1));
+
+    $commentLinkParams = ['id' => $post_id];
+    if ($parent_id > 0) {
+        if ($sortContext !== 'recent') {
+            $commentLinkParams['comment_sort'] = $sortContext;
+        }
+        if ($pageContext > 1) {
+            $commentLinkParams['comment_page'] = $pageContext;
+        }
+    }
+    if (!empty($commentPath)) {
+        $commentLinkParams['comment_path'] = implode(',', $commentPath);
+        $commentLinkParams['comment_focus'] = $newCommentId;
+    }
+
+    $redirect_url = 'postOverview?' . http_build_query($commentLinkParams) . '#comment-' . $newCommentId;
 
     $postMetaStmt = $connection->prepare("
         SELECT p.id, p.title, p.author_id, u.firstname, u.lastname, u.email
@@ -145,8 +195,8 @@ if ($stmt->execute()) {
 
     $siteUrl = rtrim((string) getSettingValue($connection, 'site_url', ''), '/');
     $postLink = $siteUrl !== ''
-        ? $siteUrl . '/postOverview?id=' . $post_id . '#comment-' . $newCommentId
-        : 'postOverview?id=' . $post_id . '#comment-' . $newCommentId;
+        ? $siteUrl . '/' . ltrim($redirect_url, '/')
+        : $redirect_url;
 
     if ($postMeta && !empty($postMeta['email']) && (int) $postMeta['author_id'] !== $current_user_id) {
         $postOwnerTitle = $parent_id > 0 ? 'New reply on your post' : 'New comment on your post';

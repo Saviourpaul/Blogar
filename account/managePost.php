@@ -2,6 +2,8 @@
 require 'includes/header.php';
 require_once 'includes/helpers.php';
 
+ensurePostMediaSchema($connection);
+
 
 if (!isset($_SESSION['user-id'])) {
     header("Location: signin");
@@ -167,6 +169,7 @@ if ($total_rows == 0) {
                                             <tr>
                                                 <th>Title</th>
                                                 <th>Category</th>
+                                                <th>Format</th>
                                                 <th>Edit</th>
                                                 <th>Delete</th>
                                             </tr>
@@ -176,6 +179,12 @@ if ($total_rows == 0) {
                                                 <tr>
                                                     <td><?= htmlspecialchars($post['title']) ?></td>
                                                     <td><?= htmlspecialchars($post['category_title']) ?></td>
+                                                    <td>
+                                                        <?php $managePostMedia = getPostMediaDetails($post); ?>
+                                                        <span class="badge rounded-pill bg-light text-dark border">
+                                                            <?= htmlspecialchars($managePostMedia['is_video'] ? $managePostMedia['video_provider_label'] : 'Image', ENT_QUOTES, 'UTF-8') ?>
+                                                        </span>
+                                                    </td>
                                                     <td>
                                                         <a href="UpdatePost?id=<?= $post['id'] ?>" class="btn sm">
                                                             <button type="button" class="btn btn-sm btn-label-primary btn-icon">

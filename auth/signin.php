@@ -17,10 +17,10 @@ unset($_SESSION['signin-data']);
     <meta charset="UTF-8">
     <meta name="author" content="Softnio">
     <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
-    <meta name="description" content="Build a stunning landing page for your AI-powered SaaS using the BrightSaaS template, featuring a modern dark-design and glowing light effect.">
+    <meta name="description" content="Sign in to IdeaHub to manage your profile, ideas, and community activity.">
     <!-- Fav Icon  -->
-    <link rel="shortcut icon" href="images/favicon.png">
-    <title>Signin   </title>
+    <link rel="shortcut icon" href="assets/images/Ideahub.png">
+    <title>Sign In | IdeaHub</title>
     <link rel="stylesheet" href="assets/css/appb183.css?v120">
 </head>
 
@@ -196,8 +196,5 @@ window.location.href = "dashboard";
 
 
 <script src="account/assets/js/sweetalert.js"></script>
-<script>(function(){function c(){var b=a.contentDocument||a.contentWindow.document;if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'9e99316cc80373c1',t:'MTc3NTczNDM2Ng=='};var a=document.createElement('script');a.src='cdn-cgi/challenge-platform/h/b/scripts/jsd/625261456364/maind41d.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script></body>
-
-
-<!-- Mirrored from brightsaas.niotheme.com/shortener-ai-login by HTTrack Website Copier/3.x [XR&CO'2014], Thu, 09 Apr 2026 11:33:35 GMT -->
+    </body>
 </html>

@@ -1,6 +1,20 @@
 <?php $pageTitle = 'all Post';
 require 'includes/header.php';
 require_once 'includes/helpers.php';
+require_once 'includes/comment-thread-helpers.php';
+
+ensurePostMediaSchema($connection);
+
+$replyPageSize = 8;
+$rootCommentsPerPage = 10;
+$maxCommentDepth = 4;
+$commentSort = normalizeCommentThreadSort($_GET['comment_sort'] ?? 'recent');
+$commentPage = max(1, (int) ($_GET['comment_page'] ?? 1));
+$currentUserIsAdmin = !empty($_SESSION['is_admin']);
+$rootComments = [];
+$commentPageCount = 1;
+$discussionCount = 0;
+$commentCount = 0;
 
 
 if (isset($_GET['id'])) {
@@ -35,74 +49,32 @@ if (isset($_GET['id'])) {
     $post_id = (int) $_GET['id'];
     $current_user_id = (int)($_SESSION['user-id'] ?? 0);
 
-    $commentHasUserId = dbColumnExists($connection, 'comments', 'user_id');
     $commentHasEditExpiresAt = dbColumnExists($connection, 'comments', 'edit_expires_at');
     $commentHasDeletedAt = dbColumnExists($connection, 'comments', 'deleted_at');
     $commentInteractionsEnabled = dbTableExists($connection, 'comment_interactions');
     $edit_window = max(1, (int) getSettingValue($connection, 'comment_edit_window', 15));
 
-    $commentSelect = ['c.*'];
-    $commentJoin = '';
+    $commentSummary = fetchCommentThreadSummary($connection, $post_id);
+    $discussionCount = (int) ($commentSummary['total_count'] ?? 0);
+    $rootCommentCount = (int) ($commentSummary['root_count'] ?? 0);
+    $commentCount = $discussionCount;
 
-    if ($commentHasUserId) {
-        $commentSelect[] = 'u.username';
-        $commentSelect[] = 'u.firstname';
-        $commentSelect[] = 'u.lastname';
-        $commentSelect[] = 'u.avatar';
-        $commentJoin = ' LEFT JOIN users u ON c.user_id = u.id ';
-    }
-
-    if ($commentInteractionsEnabled) {
-        $commentSelect[] = "(SELECT COUNT(*) FROM comment_interactions WHERE comment_id = c.id AND interaction_type = 'like') AS likes";
-        $commentSelect[] = "(SELECT COUNT(*) FROM comment_interactions WHERE comment_id = c.id AND interaction_type = 'dislike') AS dislikes";
-        $commentSelect[] = "(SELECT COUNT(*) FROM comment_interactions WHERE comment_id = c.id AND interaction_type = 'share') AS shares";
-        $commentSelect[] = "EXISTS(SELECT 1 FROM comment_interactions WHERE comment_id = c.id AND user_id = ? AND interaction_type = 'like') AS user_liked";
-        $commentSelect[] = "EXISTS(SELECT 1 FROM comment_interactions WHERE comment_id = c.id AND user_id = ? AND interaction_type = 'dislike') AS user_disliked";
-
-        $stmt = $connection->prepare("
-            SELECT " . implode(",\n                ", $commentSelect) . "
-            FROM comments c
-            $commentJoin
-            WHERE c.post_id = ?
-            ORDER BY c.created_at ASC
-        ");
-        $stmt->bind_param("iii", $current_user_id, $current_user_id, $post_id);
+    if ($rootCommentCount > 0) {
+        $commentPageCount = max(1, (int) ceil($rootCommentCount / $rootCommentsPerPage));
+        $commentPage = min($commentPage, $commentPageCount);
     } else {
-        $commentSelect[] = '0 AS likes';
-        $commentSelect[] = '0 AS dislikes';
-        $commentSelect[] = '0 AS shares';
-        $commentSelect[] = '0 AS user_liked';
-        $commentSelect[] = '0 AS user_disliked';
-
-        $stmt = $connection->prepare("
-            SELECT " . implode(",\n                ", $commentSelect) . "
-            FROM comments c
-            $commentJoin
-            WHERE c.post_id = ?
-            ORDER BY c.created_at ASC
-        ");
-        $stmt->bind_param("i", $post_id);
-    }
-    $stmt->execute();
-    $res = $stmt->get_result();
-    $comments = $res->fetch_all(MYSQLI_ASSOC);
-    $stmt->close();
-
-    $commentDataMap = [];
-    foreach ($comments as $comment) {
-        $commentDataMap[(int) $comment['id']] = $comment;
+        $commentPage = 1;
     }
 
-    $commentTree = [];
-    foreach ($comments as $c) {
-        $resolvedParentId = (int) ($c['parent_id'] ?? 0);
-        if ($resolvedParentId > 0 && !isset($commentDataMap[$resolvedParentId])) {
-            $resolvedParentId = 0;
-            $c['parent_id'] = 0;
-        }
-
-        $commentTree[$resolvedParentId][] = $c;
-    }
+    $rootComments = fetchCommentThreadNodes(
+        $connection,
+        $post_id,
+        $current_user_id,
+        0,
+        $rootCommentsPerPage,
+        ($commentPage - 1) * $rootCommentsPerPage,
+        $commentSort
+    );
 }
 
 $post_id = filter_input(INPUT_GET, 'id', FILTER_VALIDATE_INT);
@@ -162,56 +134,9 @@ if ($authorDisplayName === '') {
     $authorDisplayName = $post['author_name'] ?? 'Author';
 }
 
+$postMedia = getPostMediaDetails($post);
 $postSummary = mb_strimwidth(strip_tags((string) ($post['body'] ?? '')), 0, 220, '...');
-$commentCount = isset($comments) ? count($comments) : 0;
-$discussionCount = $commentCount;
 $postPublishedDate = !empty($post['created_at']) ? date('M j, Y', strtotime($post['created_at'])) : '';
-
-function formatCompactRelativeTime($datetime)
-{
-    $timestamp = strtotime((string) $datetime);
-    if ($timestamp === false) {
-        return 'just now';
-    }
-
-    $diff = time() - $timestamp;
-    if ($diff < 60) {
-        return 'just now';
-    }
-    if ($diff < 3600) {
-        return floor($diff / 60) . 'm';
-    }
-    if ($diff < 86400) {
-        return floor($diff / 3600) . 'h';
-    }
-    if ($diff < 2592000) {
-        return floor($diff / 86400) . 'd';
-    }
-    if ($diff < 31536000) {
-        return floor($diff / 2592000) . 'mo';
-    }
-
-    return floor($diff / 31536000) . 'y';
-}
-
-function countThreadReplies(array $tree, int $commentId, array &$cache = [])
-{
-    if (isset($cache[$commentId])) {
-        return $cache[$commentId];
-    }
-
-    $count = 0;
-    foreach ($tree[$commentId] ?? [] as $childComment) {
-        $childId = (int) ($childComment['id'] ?? 0);
-        $count++;
-        $count += countThreadReplies($tree, $childId, $cache);
-    }
-
-    $cache[$commentId] = $count;
-    return $count;
-}
-
-$commentReplyCountCache = [];
 ?>
 
 <style>
@@ -285,6 +210,37 @@ $commentReplyCountCache = [];
         display: block;
         aspect-ratio: 16 / 9;
         object-fit: cover;
+    }
+
+    .post-detail-cover--video::after {
+        display: none;
+    }
+
+    .post-detail-cover--video iframe,
+    .post-detail-cover--video video {
+        width: 100%;
+        display: block;
+        border: 0;
+        aspect-ratio: 16 / 9;
+        background: #0f172a;
+    }
+
+    .post-detail-cover__fallback {
+        width: 100%;
+        aspect-ratio: 16 / 9;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        padding: 2rem;
+        text-align: center;
+        color: #ffffff;
+        background: linear-gradient(135deg, #0f172a 0%, #2563eb 100%);
+    }
+
+    .post-detail-cover__fallback i {
+        display: block;
+        font-size: 3rem;
+        margin-bottom: 0.75rem;
     }
 
     .post-detail-meta-bar {
@@ -886,13 +842,7 @@ $commentReplyCountCache = [];
                 <div class="container-fluid">
 
                     <!-- start page title -->
-                    <div class="row">
-                        <div class="col-12">
-                            <div class="page-title-box d-flex align-items-center justify-content-between">
-                                <h4 class="mb-sm-0">Post Details</h4>
-                            </div>
-                        </div>
-                    </div>
+                    
                     <!-- end page title -->
                     <div class="row">
                         <div class="col-12">
@@ -907,14 +857,14 @@ $commentReplyCountCache = [];
                                                             <i class="bx bx-purchase-tag-alt"></i>
                                                             <?= htmlspecialchars($category['title']) ?>
                                                         </a>
-                                                        <span class="modern-post-chip">
-                                                            <i class="mdi mdi-clock-outline"></i>
-                                                            <?= htmlspecialchars(getRelativeTime($post['created_at'])) ?>
-                                                        </span>
-                                                        <span class="modern-post-chip">
-                                                            <i class="bx bx-comment-dots"></i>
-                                                            <?= $commentCount ?> comments
-                                                        </span>
+                                                        <?php if ($postMedia['is_video']): ?>
+                                                            <span class="modern-post-chip">
+                                                                <i class="mdi mdi-play-circle-outline"></i>
+                                                                <?= htmlspecialchars($postMedia['video_provider_label'], ENT_QUOTES, 'UTF-8') ?>
+                                                            </span>
+                                                        <?php endif; ?>
+                                                       
+                                                      
                                                     </div>
                                                     <h1 class="post-detail-title"><?= htmlspecialchars($post['title']) ?></h1>
                                                     <?php if ($postSummary !== ''): ?>
@@ -922,10 +872,36 @@ $commentReplyCountCache = [];
                                                     <?php endif; ?>
                                                 </div>
 
-                                                <?php if (!empty($post['thumbnail'])): ?>
+                                                <?php if ($postMedia['is_embed']): ?>
+                                                    <div class="post-detail-cover post-detail-cover--video">
+                                                        <iframe
+                                                            src="<?= htmlspecialchars($postMedia['video_embed_url'], ENT_QUOTES, 'UTF-8') ?>"
+                                                            title="<?= htmlspecialchars($post['title'], ENT_QUOTES, 'UTF-8') ?>"
+                                                            loading="lazy"
+                                                            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+                                                            referrerpolicy="strict-origin-when-cross-origin"
+                                                            allowfullscreen></iframe>
+                                                    </div>
+                                                <?php elseif ($postMedia['is_uploaded_video']): ?>
+                                                    <div class="post-detail-cover post-detail-cover--video">
+                                                        <video controls preload="none" <?= $postMedia['poster_url'] !== '' ? 'poster="' . htmlspecialchars($postMedia['poster_url'], ENT_QUOTES, 'UTF-8') . '"' : '' ?>>
+                                                            <source src="<?= htmlspecialchars($postMedia['video_file_url'], ENT_QUOTES, 'UTF-8') ?>">
+                                                            Your browser does not support inline video playback.
+                                                        </video>
+                                                    </div>
+                                                <?php elseif ($postMedia['poster_url'] !== ''): ?>
                                                     <div class="post-detail-cover">
-                                                        <img src="account/uploads/<?= htmlspecialchars($post['thumbnail']) ?>"
+                                                        <img src="<?= htmlspecialchars($postMedia['poster_url'], ENT_QUOTES, 'UTF-8') ?>"
                                                             alt="<?= htmlspecialchars($post['title']) ?>">
+                                                    </div>
+                                                <?php elseif ($postMedia['is_video']): ?>
+                                                    <div class="post-detail-cover post-detail-cover--video">
+                                                        <div class="post-detail-cover__fallback">
+                                                            <div>
+                                                                <i class="mdi mdi-play-circle-outline"></i>
+                                                                <span class="fw-semibold"><?= htmlspecialchars($postMedia['video_provider_label'] ?: 'Video', ENT_QUOTES, 'UTF-8') ?></span>
+                                                            </div>
+                                                        </div>
                                                     </div>
                                                 <?php endif; ?>
 
@@ -971,6 +947,17 @@ $commentReplyCountCache = [];
                                                             <span><?= $commentCount ?></span>
                                                             <span>comments</span>
                                                         </a>
+
+                                                        <?php if ($postMedia['is_embed'] && $postMedia['canonical_url'] !== ''): ?>
+                                                            <a
+                                                                href="<?= htmlspecialchars($postMedia['canonical_url'], ENT_QUOTES, 'UTF-8') ?>"
+                                                                target="_blank"
+                                                                rel="noopener noreferrer"
+                                                                class="post-detail-action">
+                                                                <i class="mdi mdi-open-in-new text-muted"></i>
+                                                                <span>Open <?= htmlspecialchars($postMedia['video_provider_label'], ENT_QUOTES, 'UTF-8') ?></span>
+                                                            </a>
+                                                        <?php endif; ?>
                                                     </div>
                                                 </div>
 

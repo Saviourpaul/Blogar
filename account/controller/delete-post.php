@@ -6,6 +6,8 @@ if (session_status() === PHP_SESSION_NONE) {
     session_start();
 }
 
+ensurePostMediaSchema($connection);
+
 if (!isSettingEnabled($connection, 'enable_delete_post', false)) {
     $_SESSION['delete-post'] = "Delete post is currently disabled in settings.";
     header("Location: managePost");
@@ -33,10 +35,16 @@ $title = $post['title'] ?? 'selected';
 
 // Delete thumbnail safely
 if (!empty($post['thumbnail'])) {
-    $thumbnail = 'account/uploads/' . $post['thumbnail'];
-    if (file_exists($thumbnail)) {
-        unlink($thumbnail);
-    }
+    deletePostUploadAsset($post['thumbnail']);
+}
+
+if (
+    normalizePostMediaType($post['media_type'] ?? 'image') === 'video' &&
+    normalizePostVideoSource($post['video_source'] ?? '') === 'upload' &&
+    normalizePostVideoProvider($post['video_provider'] ?? '') === 'upload' &&
+    !empty($post['video_url'])
+) {
+    deletePostUploadAsset($post['video_url']);
 }
 
 // Delete post

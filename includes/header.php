@@ -1,3 +1,9 @@
+<?php
+$publicBasePath = rtrim(str_replace('\\', '/', dirname($_SERVER['SCRIPT_NAME'] ?? '')), '/');
+$pageTitleText = isset($pageTitle) && $pageTitle !== ''
+    ? htmlspecialchars($pageTitle, ENT_QUOTES, 'UTF-8') . ' | IdeaHub'
+    : 'IdeaHub | Connect Ideas with Builders';
+?>
 <!DOCTYPE html>
 <html lang="zxx" id="pageroot">
 
@@ -6,10 +12,10 @@
     <meta charset="UTF-8">
     <meta name="author" content="Softnio">
     <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
-    <meta name="description" content="Build a stunning landing page for your AI-powered SaaS using the BrightSaaS template, featuring a modern dark-design and glowing light effect.">
+    <meta name="description" content="IdeaHub connects creators, developers, founders, and investors around ideas worth building.">
     <!-- Fav Icon  -->
     <link rel="shortcut icon" href="assets/images/Ideahub.png">
-    <title>URL Shortener | BrightSaaS - AI Startup and SaaS Software Website Template. </title>
+    <title><?= $pageTitleText ?></title>
     <link rel="stylesheet" href="assets/css/appb183.css?v120">
 </head>
 
@@ -20,7 +26,7 @@
                 <div class="nk-menu-background"></div><!-- .nk-menu-background -->
                 <div class="container">
                     <div class="nk-menubar-warper">
-                        <a class="nk-logo" href="shortener-ai-home.html">
+                        <a class="nk-logo" href="<?= $publicBasePath ?>/home">
                             <img src="assets/images/Ideahub.png"  alt="logo" />
                         </a><!-- .nk-logo -->
                         <div class="nk-menu-toggle d-xl-none">
@@ -32,25 +38,25 @@
                         <div class="nk-menu">
                             <ul class="nk-menu-list">
                                 <li class="nk-menu-item ">
-                                    <a href="home" class="nk-menu-link"> <span>Home</span> </a>
+                                    <a href="<?= $publicBasePath ?>/home" class="nk-menu-link"> <span>Home</span> </a>
                                 </li>
                                 <li class="nk-menu-item ">
-                                    <a href="about" class="nk-menu-link"> <span>About</span> </a>
+                                    <a href="<?= $publicBasePath ?>/about" class="nk-menu-link"> <span>About</span> </a>
                                 </li>
                                 <li class="nk-menu-item ">
-                                    <a href="faqs" class="nk-menu-link"> <span>faq</span> </a>
+                                    <a href="<?= $publicBasePath ?>/faqs" class="nk-menu-link"> <span>faq</span> </a>
                                 </li>
                                
                                 <!--li class="nk-menu-item ">
                                     <a href="pricing" class="nk-menu-link"> <span>Pricing</span> </a>
                                 </li-->
                                 <li class="nk-menu-item ">
-                                    <a href="contact" class="nk-menu-link"> <span>Contact</span> </a>
+                                    <a href="<?= $publicBasePath ?>/contact" class="nk-menu-link"> <span>Contact</span> </a>
                                 </li>
                             </ul><!-- .nk-menu-list -->
                             <ul class="nk-menu-tools flex-xl-row-reverse column-gap-6">
                                 <li>
-                                            <a  href="signup" class="btn btn-line-animated btn-glow-hover btn-pill btn-lg" data-cursor="click">
+                                            <a  href="<?= $publicBasePath ?>/signup" class="btn btn-line-animated btn-glow-hover btn-pill btn-lg" data-cursor="click">
                                                 <span class="text-gradient-heading angle-0">Get Started </span>
 
                                                 <div class="beam-container">
@@ -60,7 +66,7 @@
                                                 </div>
                                             </a>
                                         </li>
-                                <li> <a href="signin" class="link link-content fw-normal link-hover-title"> Login </a> </li>
+                                <li> <a href="<?= $publicBasePath ?>/signin" class="link link-content fw-normal link-hover-title"> Login </a> </li>
                             </ul><!-- .nk-menu-tools -->
                         </div><!-- .nk-menu -->
                         <div id="menu-bar-overlay" class="nk-menu-overlay"></div><!-- .nk-menu-overlay -->

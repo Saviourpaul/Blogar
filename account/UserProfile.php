@@ -1,6 +1,8 @@
 <?php $pageTitle = 'Author Profile';
 require 'includes/header.php';
 
+ensurePostMediaSchema($connection);
+
 $profileUserId = filter_input(INPUT_GET, 'id', FILTER_VALIDATE_INT);
 $scriptPath = str_replace('\\', '/', $_SERVER['SCRIPT_NAME'] ?? '');
 $scriptDir = rtrim(dirname($scriptPath), '/');
@@ -20,6 +22,9 @@ $userColumns = [
     'email',
     'firstname',
     'lastname',
+    'account_type',
+    'profile_role',
+    'engagement_stage',
     'phone',
     'bio',
     'gender',
@@ -73,6 +78,9 @@ if ($displayNameRaw === '') {
 
 $displayName = htmlspecialchars($displayNameRaw, ENT_QUOTES, 'UTF-8');
 $username = $safeText($profileUser['username'] ?? '', 'member');
+$accountTypeLabel = getOnboardingAccountTypeLabel($profileUser['account_type'] ?? null);
+$profileRoleLabel = getOnboardingRoleLabel($profileUser['profile_role'] ?? null);
+$engagementStageLabel = getOnboardingStageLabel($profileUser['engagement_stage'] ?? null);
 $bioText = trim(htmlspecialchars_decode((string) ($profileUser['bio'] ?? ''), ENT_QUOTES));
 $bioHtml = $bioText !== ''
     ? nl2br(htmlspecialchars($bioText, ENT_QUOTES, 'UTF-8'))
@@ -159,6 +167,10 @@ $recentPostsStmt = $connection->prepare("
         p.id,
         p.title,
         p.thumbnail,
+        p.media_type,
+        p.video_source,
+        p.video_provider,
+        p.video_url,
         p.body,
         p.created_at,
         c.title AS category_title,
@@ -177,6 +189,9 @@ $recentPostsStmt->close();
 
 $profileMeta = [
     ['label' => 'Joined', 'value' => $joinedLabel . ($joinedRelative ? ' | ' . $joinedRelative : '')],
+    ['label' => 'Role', 'value' => htmlspecialchars($profileRoleLabel ?? 'Not set', ENT_QUOTES, 'UTF-8')],
+    ['label' => 'Focus', 'value' => htmlspecialchars($accountTypeLabel ?? 'Not set', ENT_QUOTES, 'UTF-8')],
+    ['label' => 'Pace', 'value' => htmlspecialchars($engagementStageLabel ?? 'Not set', ENT_QUOTES, 'UTF-8')],
     ['label' => 'Country', 'value' => $safeText($profileUser['country'] ?? '', '-')],
     ['label' => 'Comments', 'value' => (string) $commentCount],
     ['label' => 'Categories', 'value' => (string) $categoryCount],
@@ -285,6 +300,21 @@ $profileMeta = [
                                     <span class="badge rounded-pill bg-primary-subtle text-primary px-3 py-2">
                                         <i class="mdi mdi-account-outline me-1"></i>@<?= $username ?>
                                     </span>
+                                    <?php if ($profileRoleLabel): ?>
+                                        <span class="badge rounded-pill bg-info-subtle text-info px-3 py-2">
+                                            <i class="mdi mdi-account-badge-outline me-1"></i><?= htmlspecialchars($profileRoleLabel, ENT_QUOTES, 'UTF-8') ?>
+                                        </span>
+                                    <?php endif; ?>
+                                    <?php if ($accountTypeLabel): ?>
+                                        <span class="badge rounded-pill bg-success-subtle text-success px-3 py-2">
+                                            <i class="mdi mdi-compass-outline me-1"></i><?= htmlspecialchars($accountTypeLabel, ENT_QUOTES, 'UTF-8') ?>
+                                        </span>
+                                    <?php endif; ?>
+                                    <?php if ($engagementStageLabel): ?>
+                                        <span class="badge rounded-pill bg-warning-subtle text-warning px-3 py-2">
+                                            <i class="mdi mdi-flash-outline me-1"></i><?= htmlspecialchars($engagementStageLabel, ENT_QUOTES, 'UTF-8') ?>
+                                        </span>
+                                    <?php endif; ?>
                                     <span class="badge rounded-pill bg-light text-dark border px-3 py-2">
                                         <i class="mdi mdi-calendar-month-outline me-1"></i>Joined <?= htmlspecialchars($joinedLabel, ENT_QUOTES, 'UTF-8') ?>
                                     </span>
@@ -394,6 +424,10 @@ $profileMeta = [
                                 <?php else: ?>
                                     <div class="row g-4">
                                         <?php foreach ($recentPosts as $recentPost): ?>
+                                            <?php
+                                            $recentPostMedia = getPostMediaDetails($recentPost);
+                                            $recentPostCtaLabel = $recentPostMedia['is_video'] ? 'Watch video' : 'Read article';
+                                            ?>
                                             <div class="col-md-6">
                                                 <div class="modern-post-card h-100">
                                                     <div class="modern-post-card__body d-flex flex-column h-100">
@@ -406,6 +440,12 @@ $profileMeta = [
                                                                 <i class="mdi mdi-clock-outline"></i>
                                                                 <?= htmlspecialchars(getRelativeTime($recentPost['created_at']), ENT_QUOTES, 'UTF-8') ?>
                                                             </span>
+                                                            <?php if ($recentPostMedia['is_video']): ?>
+                                                                <span class="modern-post-chip">
+                                                                    <i class="mdi mdi-play-circle-outline"></i>
+                                                                    <?= htmlspecialchars($recentPostMedia['video_provider_label'], ENT_QUOTES, 'UTF-8') ?>
+                                                                </span>
+                                                            <?php endif; ?>
                                                         </div>
 
                                                         <h6 class="modern-post-card__title fs-5">
@@ -414,18 +454,7 @@ $profileMeta = [
                                                             </a>
                                                         </h6>
 
-                                                        <?php if (!empty($recentPost['thumbnail'])): ?>
-                                                            <a href="postOverview?id=<?= (int) $recentPost['id'] ?>" class="modern-post-card__media">
-                                                                <img
-                                                                    src="account/uploads/<?= htmlspecialchars($recentPost['thumbnail'], ENT_QUOTES, 'UTF-8') ?>"
-                                                                    class="modern-post-card__image"
-                                                                    alt="<?= htmlspecialchars($recentPost['title'], ENT_QUOTES, 'UTF-8') ?>">
-                                                                <span class="modern-post-card__media-badge">
-                                                                    <i class="mdi mdi-arrow-top-right"></i>
-                                                                    Open story
-                                                                </span>
-                                                            </a>
-                                                        <?php endif; ?>
+                                                        <?= renderPostMediaPreview($recentPost, 'postOverview?id=' . (int) $recentPost['id'], $recentPost['title']) ?>
 
                                                         <p class="modern-post-card__excerpt">
                                                             <?= htmlspecialchars($postExcerpt($recentPost['body']), ENT_QUOTES, 'UTF-8') ?>
@@ -444,7 +473,7 @@ $profileMeta = [
                                                             </div>
 
                                                             <a href="postOverview?id=<?= (int) $recentPost['id'] ?>" class="modern-post-readmore">
-                                                                Read article
+                                                                <?= htmlspecialchars($recentPostCtaLabel, ENT_QUOTES, 'UTF-8') ?>
                                                                 <i class="mdi mdi-arrow-right"></i>
                                                             </a>
                                                         </div>

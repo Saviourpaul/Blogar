@@ -2,6 +2,8 @@
 
 require_once __DIR__ . '/../account/includes/helpers.php';
 
+ensureUserOnboardingSchema($connection);
+
 if (isset($_POST['submit'])) {
 
     $username_email = filter_var($_POST['username_email'], FILTER_SANITIZE_SPECIAL_CHARS);
@@ -19,7 +21,7 @@ if (isset($_POST['submit'])) {
     }
 
     $stmt = $connection->prepare("
-        SELECT id, password, is_admin, login_attempts, last_attempt 
+        SELECT id, password, is_admin, login_attempts, last_attempt, account_type, profile_role, engagement_stage, preferred_category_ids, onboarding_completed_at
         FROM users
         WHERE username = ? OR email = ?
         LIMIT 1
@@ -91,7 +93,11 @@ if (isset($_POST['submit'])) {
                 (int) $user['id']
             );
 
-            header("Location: dashboard");
+            $redirectLocation = (!empty($user['is_admin']) || isUserOnboardingComplete($user))
+                ? "dashboard"
+                : "onboarding";
+
+            header("Location: " . $redirectLocation);
             exit;
 
         } else {

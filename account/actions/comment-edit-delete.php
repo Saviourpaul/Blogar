@@ -14,6 +14,7 @@ if (session_status() === PHP_SESSION_NONE) {
 require_once __DIR__ . '/../includes/helpers.php';
 
 $session_user_id = $_SESSION['user-id'] ?? null;
+$currentUserIsAdmin = !empty($_SESSION['is_admin']);
 
 if (!$session_user_id) {
     echo json_encode(['status' => 'error', 'message' => 'Unauthorized. Please log in.']);
@@ -70,9 +71,8 @@ if (!$comment) {
     exit;
 }
 
-// Check if user is the comment author
-if ((int)$comment['user_id'] !== $user_id) {
-    echo json_encode(['status' => 'error', 'message' => 'You can only edit or delete your own comments.']);
+if (!$currentUserIsAdmin && (int) $comment['user_id'] !== $user_id) {
+    echo json_encode(['status' => 'error', 'message' => 'You can only moderate your own comments unless you are an admin.']);
     exit;
 }
 
@@ -88,7 +88,7 @@ if ($action === 'edit') {
         ? strtotime((string) $comment['edit_expires_at'])
         : strtotime((string) $comment['created_at']) + ($edit_window * 60);
 
-    if ($edit_deadline !== false && time() > $edit_deadline) {
+    if (!$currentUserIsAdmin && $edit_deadline !== false && time() > $edit_deadline) {
         echo json_encode(['status' => 'error', 'message' => "Comments can only be edited within $edit_window minutes of creation."]);
         exit;
     }
@@ -99,7 +99,7 @@ if ($action === 'edit') {
         exit;
     }
 
-    if (strlen($new_content) > 5000) {
+    if (mb_strlen($new_content) > 5000) {
         echo json_encode(['status' => 'error', 'message' => 'Comment is too long (maximum 5000 characters).']);
         exit;
     }

@@ -2,85 +2,241 @@
 
 require_once __DIR__ . '/../includes/helpers.php';
 
-if(!isset($_POST['submit'])){
+ensurePostMediaSchema($connection);
+
+if (!isset($_POST['submit'])) {
     header('location: managePost');
     exit;
 }
 
-$id = intval($_POST['id']);
-$title = trim($_POST['title']);
+if (!isset($_SESSION['user-id'])) {
+    header('location: signin');
+    exit;
+}
+
+$current_user_id = (int) $_SESSION['user-id'];
+$is_admin = !empty($_SESSION['is_admin']);
+
+$id = filter_input(INPUT_POST, 'id', FILTER_VALIDATE_INT);
+if (!$id) {
+    $_SESSION['edit-post'] = "Invalid post request";
+    header('location: managePost');
+    exit;
+}
+
+$postStmt = $connection->prepare("SELECT * FROM posts WHERE id = ? LIMIT 1");
+$postStmt->bind_param("i", $id);
+$postStmt->execute();
+$existingPost = $postStmt->get_result()->fetch_assoc();
+$postStmt->close();
+
+if (!$existingPost) {
+    $_SESSION['edit-post'] = "Post not found";
+    header('location: managePost');
+    exit;
+}
+
+if (!$is_admin && (int) ($existingPost['author_id'] ?? 0) !== $current_user_id) {
+    $_SESSION['edit-post'] = "You are not allowed to edit this post";
+    header('location: managePost');
+    exit;
+}
+
+$title = trim((string) filter_input(INPUT_POST, 'title', FILTER_SANITIZE_SPECIAL_CHARS));
 $body = sanitizeRichTextHtml($_POST['body'] ?? '');
-$category_id = intval($_POST['category']);
+$category_id = filter_input(INPUT_POST, 'category', FILTER_VALIDATE_INT);
 $is_featured = isset($_POST['is_featured']) ? 1 : 0;
+$media_type = normalizePostMediaType($_POST['media_type'] ?? ($existingPost['media_type'] ?? 'image'));
+$video_source = normalizePostVideoSource($_POST['video_source'] ?? ($existingPost['video_source'] ?? ''));
+$video_link = trim((string) ($_POST['video_link'] ?? ''));
 
-$previous_thumbnail_name = $_POST['previous_thumbnail_name'];
-$thumbnail = $_FILES['thumbnail'];
+$thumbnail = $_FILES['thumbnail'] ?? null;
+$video_file = $_FILES['video_file'] ?? null;
 
-$thumbnail_name = $previous_thumbnail_name;
+$existingThumbnail = normalizePostUploadPath($existingPost['thumbnail'] ?? '');
+$existingVideoSource = normalizePostVideoSource($existingPost['video_source'] ?? '');
+$existingVideoProvider = normalizePostVideoProvider($existingPost['video_provider'] ?? '');
+$existingVideoValue = trim((string) ($existingPost['video_url'] ?? ''));
 
+$thumbnail_name = $existingThumbnail;
+$video_provider = '';
+$stored_video_value = '';
 
+$errors = [];
+$newlyStoredFiles = [];
+$filesToDeleteAfterSuccess = [];
+$transactionStarted = false;
 
+if ($title === '') {
+    $errors[] = "Post title required";
+}
 
-if(!empty($thumbnail['name'])){
+if ($body === '') {
+    $errors[] = "Post body required";
+}
 
-    $allowed = ['jpg','jpeg','png'];
-    $ext = strtolower(pathinfo($thumbnail['name'], PATHINFO_EXTENSION));
+if (!$category_id) {
+    $errors[] = "Invalid category";
+}
 
-    if(!in_array($ext,$allowed)){
-        $_SESSION['edit-post'] = "Invalid image format";
-        header('location: managePost');
-        exit;
+if ($thumbnail && ($thumbnail['error'] ?? UPLOAD_ERR_NO_FILE) !== UPLOAD_ERR_NO_FILE && ($thumbnail['error'] ?? UPLOAD_ERR_OK) !== UPLOAD_ERR_OK) {
+    $errors[] = "Image upload failed";
+}
+
+if ($media_type === 'video') {
+    if ($video_source === 'embed') {
+        $parsedVideo = parseExternalVideoReference($video_link);
+        if (!$parsedVideo['is_valid']) {
+            $errors[] = "Use a valid YouTube or Vimeo URL";
+        } else {
+            $video_provider = $parsedVideo['provider'];
+            $stored_video_value = $parsedVideo['video_id'];
+        }
+    } elseif ($video_source === 'upload') {
+        $hasExistingUpload = $existingVideoSource === 'upload' && $existingVideoProvider === 'upload' && $existingVideoValue !== '';
+        $hasNewUpload = $video_file && ($video_file['error'] ?? UPLOAD_ERR_NO_FILE) === UPLOAD_ERR_OK;
+
+        if (!$hasExistingUpload && !$hasNewUpload) {
+            $errors[] = "Video upload required";
+        } elseif ($video_file && ($video_file['error'] ?? UPLOAD_ERR_NO_FILE) !== UPLOAD_ERR_NO_FILE && ($video_file['error'] ?? UPLOAD_ERR_OK) !== UPLOAD_ERR_OK) {
+            $errors[] = "Video upload failed";
+        }
+    } else {
+        $errors[] = "Select how the video should be added";
+    }
+}
+
+if (!empty($errors)) {
+    $_SESSION['edit-post'] = implode("<br>", $errors);
+    $_SESSION['edit-post-data'] = $_POST;
+    header('location: UpdatePost?id=' . $id);
+    exit;
+}
+
+try {
+    if ($thumbnail && ($thumbnail['error'] ?? UPLOAD_ERR_NO_FILE) === UPLOAD_ERR_OK) {
+        $storedThumbnail = storePostUpload(
+            $thumbnail,
+            '',
+            'post_thumb_',
+            [
+                'image/jpeg' => 'jpg',
+                'image/png' => 'png',
+            ],
+            5 * 1024 * 1024
+        );
+
+        $thumbnail_name = $storedThumbnail['stored_path'];
+        $newlyStoredFiles[] = $thumbnail_name;
+
+        if ($existingThumbnail !== '' && $existingThumbnail !== $thumbnail_name) {
+            $filesToDeleteAfterSuccess[] = $existingThumbnail;
+        }
     }
 
-    if($thumbnail['size'] > 5000000){
-        $_SESSION['edit-post'] = "Image must be less than 5MB";
-        header('location: managePost');
-        exit;
+    if ($media_type === 'image') {
+        if ($thumbnail_name === '') {
+            throw new RuntimeException('Image posts require a thumbnail.');
+        }
+
+        if ($existingVideoSource === 'upload' && $existingVideoProvider === 'upload' && $existingVideoValue !== '') {
+            $filesToDeleteAfterSuccess[] = $existingVideoValue;
+        }
+    } elseif ($video_source === 'upload') {
+        if ($video_file && ($video_file['error'] ?? UPLOAD_ERR_NO_FILE) === UPLOAD_ERR_OK) {
+            $storedVideo = storePostUpload(
+                $video_file,
+                'videos',
+                'post_video_',
+                [
+                    'video/mp4' => 'mp4',
+                    'video/webm' => 'webm',
+                    'video/ogg' => 'ogv',
+                    'application/ogg' => 'ogv',
+                ],
+                50 * 1024 * 1024
+            );
+
+            $video_provider = 'upload';
+            $stored_video_value = $storedVideo['stored_path'];
+            $newlyStoredFiles[] = $stored_video_value;
+
+            if ($existingVideoSource === 'upload' && $existingVideoProvider === 'upload' && $existingVideoValue !== '' && $existingVideoValue !== $stored_video_value) {
+                $filesToDeleteAfterSuccess[] = $existingVideoValue;
+            }
+        } else {
+            $video_provider = 'upload';
+            $stored_video_value = $existingVideoValue;
+        }
+    } elseif ($video_source === 'embed') {
+        if ($existingVideoSource === 'upload' && $existingVideoProvider === 'upload' && $existingVideoValue !== '') {
+            $filesToDeleteAfterSuccess[] = $existingVideoValue;
+        }
     }
 
-    $thumbnail_name = time().'_'.$thumbnail['name'];
+    if ($media_type !== 'video') {
+        $video_source = null;
+        $video_provider = null;
+        $stored_video_value = null;
+    }
 
-    move_uploaded_file(
-        $thumbnail['tmp_name'],
-        'account/images/'.$thumbnail_name
+    $thumbnail_db_value = $thumbnail_name !== '' ? $thumbnail_name : null;
+
+    $transactionStarted = true;
+    $connection->begin_transaction();
+
+    if ($is_featured === 1) {
+        mysqli_query($connection, "UPDATE posts SET is_featured=0");
+    }
+
+    $stmt = $connection->prepare(
+        "UPDATE posts
+        SET title = ?, body = ?, category_id = ?, thumbnail = ?, is_featured = ?, media_type = ?, video_source = ?, video_provider = ?, video_url = ?
+        WHERE id = ?"
     );
 
-    /* delete old thumbnail */
+    $stmt->bind_param(
+        "ssissssssi",
+        $title,
+        $body,
+        $category_id,
+        $thumbnail_db_value,
+        $is_featured,
+        $media_type,
+        $video_source,
+        $video_provider,
+        $stored_video_value,
+        $id
+    );
 
-    $old_path = 'account/images/'.$previous_thumbnail_name;
+    $stmt->execute();
+    $stmt->close();
 
-    if(file_exists($old_path)){
-        unlink($old_path);
+    $connection->commit();
+    $transactionStarted = false;
+
+    foreach (array_unique(array_filter($filesToDeleteAfterSuccess)) as $storedFile) {
+        deletePostUploadAsset($storedFile);
     }
+
+    $_SESSION['edit-post-success'] = "Post updated successfully";
+} catch (Throwable $exception) {
+    if ($transactionStarted) {
+        $connection->rollback();
+    }
+
+    foreach (array_unique(array_filter($newlyStoredFiles)) as $storedFile) {
+        deletePostUploadAsset($storedFile);
+    }
+
+    error_log('Update post failed: ' . $exception->getMessage());
+    $_SESSION['edit-post'] = $exception instanceof RuntimeException
+        ? $exception->getMessage()
+        : "Failed to update post";
+    $_SESSION['edit-post-data'] = $_POST;
+    header('location: UpdatePost?id=' . $id);
+    exit;
 }
-
-
-if($is_featured == 1){
-    mysqli_query($connection,"UPDATE posts SET is_featured=0");
-}
-
-
-
-
-$stmt = $connection->prepare(
-"UPDATE posts
-SET title=?, body=?, category_id=?, thumbnail=?, is_featured=?
-WHERE id=?"
-);
-
-$stmt->bind_param(
-"ssissi",
-$title,
-$body,
-$category_id,
-$thumbnail_name,
-$is_featured,
-$id
-);
-
-$stmt->execute();
-
-$_SESSION['edit-post-success'] = "Post updated successfully";
 
 header('location: managePost');
 exit;

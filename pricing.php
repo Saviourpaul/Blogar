@@ -1,4 +1,4 @@
-
+<?php $pageTitle = 'Pricing'; ?>
 <body class="nk-body">
     <div class="nk-app-root">
         <div class="bg-mask-wraper mt-22 h-800px">
@@ -36,7 +36,7 @@
                                                     <div class="fs-9">Perfect for individuals or testing.</div>
                                                 </div>
                                                 <div class="pricing-actions">
-                                                    <a href="shortener-ai-signup.html" class="btn btn-pill btn-glow">Start free</a>
+                                                    <a href="signup" class="btn btn-pill btn-glow">Start free</a>
                                                 </div>
                                             </div>
                                             <div class="gradient-separator gradient-separator-large"></div>
@@ -92,7 +92,7 @@
                                                     <div class="fs-9">For startups and small business.</div>
                                                 </div>
                                                 <div class="pricing-actions">
-                                                    <a href="shortener-ai-signup.html" class="btn btn-pill btn-primary">Start free trial</a>
+                                                    <a href="signup" class="btn btn-pill btn-primary">Start free trial</a>
                                                 </div>
                                             </div>
                                             <div class="gradient-separator gradient-separator-large"></div>
@@ -148,7 +148,7 @@
                                                     <div class="fs-9">For agencies and growing companies.</div>
                                                 </div>
                                                 <div class="pricing-actions">
-                                                    <a href="shortener-ai-signup.html" class="btn btn-pill btn-glow">Start free trial</a>
+                                                    <a href="signup" class="btn btn-pill btn-glow">Start free trial</a>
                                                 </div>
                                             </div>
                                             <div class="gradient-separator gradient-separator-large"></div>
@@ -261,9 +261,9 @@
                                         <tfoot>
                                             <tr>
                                                 <td class="text-start border-bottom-0 py-8 px-5"></td>
-                                                <td class="text-start border-bottom-0 py-8 px-5"><a href="shortener-ai-signup.html" class="btn btn-glow btn-pill">Start for free</a></td>
-                                                <td class="text-start border-bottom-0 py-8 px-5"><a href="shortener-ai-signup.html" class="btn btn-glow btn-pill">Start free trial</a></td>
-                                                <td class="text-start border-bottom-0 py-8 px-5"><a href="shortener-ai-signup.html" class="btn btn-glow btn-pill">Start free trial</a></td>
+                                                <td class="text-start border-bottom-0 py-8 px-5"><a href="signup" class="btn btn-glow btn-pill">Start for free</a></td>
+                                                <td class="text-start border-bottom-0 py-8 px-5"><a href="signup" class="btn btn-glow btn-pill">Start free trial</a></td>
+                                                <td class="text-start border-bottom-0 py-8 px-5"><a href="signup" class="btn btn-glow btn-pill">Start free trial</a></td>
                                             </tr>
                                         </tfoot>
                                     </table>
@@ -300,7 +300,7 @@
                                             <div class="fs-7 text-title">Custom Price</div>
                                             <div class="fs-10 text-yellow">Only billed annually</div>
                                             <div class="pricing-actions mt-6">
-                                                <a href="shortener-ai-signup.html" class="btn btn-lg btn-pill btn-line-animated">
+                                                <a href="signup" class="btn btn-lg btn-pill btn-line-animated">
                                                     <span class="text-gradient-heading angle-0">Start free trial</span>
                                                     <div class="beam-container">
                                                         <div class="beam-slide">
@@ -447,7 +447,5 @@
     <div class="nk-cursor js-cursor"></div>
     <!-- JavaScript -->
     <script src="assets/js/appb183.js?v120"></script>
-<script>(function(){function c(){var b=a.contentDocument||a.contentWindow.document;if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'9e993177c82873c1',t:'MTc3NTczNDM2Nw=='};var a=document.createElement('script');a.src='cdn-cgi/challenge-platform/h/b/scripts/jsd/625261456364/maind41d.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script></body>
-
-
+    </body>
 </html>

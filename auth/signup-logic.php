@@ -11,17 +11,20 @@ $firstname = trim($_POST['firstname']);
 $lastname  = trim($_POST['lastname']);
 $username  = trim($_POST['username']);
 $email     = trim($_POST['email']);
+$accountType = normalizeOnboardingAccountType($_POST['account_type'] ?? '');
 $password  = $_POST['create_password'];
 $confirm   = $_POST['confirm_password'];
 
 
 $_SESSION = [];
 
+ensureUserOnboardingSchema($connection);
 
 
 if (!$firstname) $_SESSION['signup-errors'] = "First name is required";
 if (!$lastname)  $_SESSION['signup-errors'] = "Last name is required";
 if (!$username)  $_SESSION['signup-errors'] = "Username is required";
+if ($accountType === null) $_SESSION['signup-errors'] = "Choose how you want to use IdeaHub";
 
 if (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
     $_SESSION['signup-errors']= "Invalid email format";
@@ -60,16 +63,17 @@ if ($result->num_rows > 0) {
 $hashed_password = password_hash($password, PASSWORD_DEFAULT);
 
 $stmt = $connection->prepare("
-    INSERT INTO users (firstname, lastname, username, email, password, is_admin)
-    VALUES (?, ?, ?, ?, ?, 0)
+    INSERT INTO users (firstname, lastname, username, email, password, is_admin, account_type)
+    VALUES (?, ?, ?, ?, ?, 0, ?)
 ");
 
-$stmt->bind_param("sssss",
+$stmt->bind_param("ssssss",
     $firstname,
     $lastname,
     $username,
     $email,
-    $hashed_password
+    $hashed_password,
+    $accountType
 );
 
 $stmt->execute();
@@ -123,6 +127,6 @@ foreach (getAdminNotificationRecipients($connection) as $recipient) {
     }
 }
 
-$_SESSION['signup-success'] = "Registration successful. Please login.";
+$_SESSION['signup-success'] = "Registration successful. Sign in to finish setting up your workspace.";
 header('location: signin');
 exit;

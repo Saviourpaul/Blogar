@@ -5,6 +5,7 @@ $firstname = $_SESSION['signup-data']['firstname'] ?? null;
 $lastname = $_SESSION['signup-data']['lastname'] ?? null;
 $username = $_SESSION['signup-data']['username'] ?? null;
 $email = $_SESSION['signup-data']['email'] ?? null;
+$account_type = $_SESSION['signup-data']['account_type'] ?? 'poster';
 $create_password = $_SESSION['signup-data']['create_password'] ?? null;
 $confirm_password = $_SESSION['signup-data']['confirm_password'] ?? null;
 
@@ -23,11 +24,63 @@ unset($_SESSION['signup-data']);
     <meta charset="UTF-8">
     <meta name="author" content="Softnio">
     <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
-    <meta name="description" content="Build a stunning landing page for your AI-powered SaaS using the BrightSaaS template, featuring a modern dark-design and glowing light effect.">
+    <meta name="description" content="Create an IdeaHub account to share ideas and connect with builders, founders, and investors.">
     <!-- Fav Icon  -->
-    <link rel="shortcut icon" href="images/favicon.png">
-    <title>Sign Up - URL Shortener | BrightSaaS - AI Startup and SaaS Software Website Template. </title>
+    <link rel="shortcut icon" href="assets/images/Ideahub.png">
+    <title>Sign Up | IdeaHub</title>
     <link rel="stylesheet" href="assets/css/appb183.css?v120">
+    <style>
+        .signup-choice-grid {
+            display: grid;
+            grid-template-columns: repeat(3, minmax(0, 1fr));
+            gap: 1rem;
+        }
+
+        .signup-choice {
+            position: relative;
+        }
+
+        .signup-choice input {
+            position: absolute;
+            opacity: 0;
+            pointer-events: none;
+        }
+
+        .signup-choice__card {
+            height: 100%;
+            border: 1px solid rgba(255, 255, 255, 0.14);
+            border-radius: 1.1rem;
+            padding: 1rem;
+            background: rgba(255, 255, 255, 0.04);
+            transition: border-color .2s ease, transform .2s ease, background .2s ease;
+            cursor: pointer;
+        }
+
+        .signup-choice__title {
+            display: block;
+            font-weight: 700;
+            margin-bottom: .35rem;
+        }
+
+        .signup-choice__text {
+            display: block;
+            color: rgba(255, 255, 255, 0.72);
+            font-size: .95rem;
+            line-height: 1.45;
+        }
+
+        .signup-choice input:checked + .signup-choice__card {
+            border-color: rgba(81, 153, 255, 0.95);
+            background: rgba(81, 153, 255, 0.12);
+            transform: translateY(-2px);
+        }
+
+        @media (max-width: 767.98px) {
+            .signup-choice-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
 </head>
 
 <body class="nk-body">
@@ -113,6 +166,31 @@ unset($_SESSION['signup-data']);
                                                 </div>
                                                 <div class="col-12">
                                                     <div class="form-group">
+                                                        <label class="form-label">How will you use IdeaHub?</label>
+                                                        <div class="signup-choice-grid">
+                                                            <label class="signup-choice">
+                                                                <input type="radio" name="account_type" value="poster" <?= $account_type === 'poster' ? 'checked' : '' ?> required>
+                                                                <span class="signup-choice__card">
+                                                                    <span class="signup-choice__title">creator</span>
+                                                                </span>
+                                                            </label>
+                                                            <label class="signup-choice">
+                                                                <input type="radio" name="account_type" value="seeker" <?= $account_type === 'seeker' ? 'checked' : '' ?>>
+                                                                <span class="signup-choice__card">
+                                                                    <span class="signup-choice__title">investor</span>
+                                                                </span>
+                                                            </label>
+                                                            <label class="signup-choice">
+                                                                <input type="radio" name="account_type" value="both" <?= $account_type === 'both' ? 'checked' : '' ?>>
+                                                                <span class="signup-choice__card">
+                                                                    <span class="signup-choice__title">Both</span>
+                                                                </span>
+                                                            </label>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                                <div class="col-12">
+                                                    <div class="form-group">
                                                         <label class="form-label" for="email-address">Email</label>
                                                         <div class="form-control-wrap">
                                                             <input type="email" id="email-address" class="form-control form-control-xl" name="email" value="<?= $email ?>" placeholder="Enter your email">
@@ -139,7 +217,7 @@ unset($_SESSION['signup-data']);
                                                     <div class="d-flex justify-content-between gap-3">
                                                         <div class="form-check">
                                                             <input class="form-check-input" type="checkbox" value="" id="checkDefault">
-                                                            <label class="form-check-label" for="checkDefault"> I agree to the <a href="shortener-ai-terms.html" class="link link-content link-hover-primary">Terms of Service</a> and <a href="shortener-ai-privacy.html" class="link link-content link-hover-primary">Privacy Policy</a>
+                                                            <label class="form-check-label" for="checkDefault"> I agree to the <a href="terms" class="link link-content link-hover-primary">Terms of Service</a> and <a href="privacy" class="link link-content link-hover-primary">Privacy Policy</a>
                                                             </label>
                                                         </div>
                                                     </div>
@@ -224,7 +302,5 @@ confirmButtonColor: "#d33"
 
 <script src="account/assets/js/sweetalert.js"></script>
     <script src="assets/js/appb183.js?v120"></script>
-<script>(function(){function c(){var b=a.contentDocument||a.contentWindow.document;if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'9e9931705ad273c1',t:'MTc3NTczNDM2Ng=='};var a=document.createElement('script');a.src='cdn-cgi/challenge-platform/h/b/scripts/jsd/625261456364/maind41d.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script></body>
-
-
+    </body>
 </html>

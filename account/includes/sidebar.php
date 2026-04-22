@@ -22,12 +22,20 @@ if ($postSettingResult && mysqli_num_rows($postSettingResult) > 0) {
                             <span>Dashboard</span>
                         </a>
                     </li>
-                     <li>
+                    <li>
                         <a href="post">
                             <i class="fab fas fa-lightbulb"></i>
                             <span>Ideas</span>
                         </a>
                     </li>                  
+                    <?php if (empty($_SESSION['is_admin'])): ?>
+                        <li>
+                            <a href="onboarding" class="">
+                                <i class="mdi mdi-tune-variant"></i>
+                                <span>Preferences</span>
+                            </a>
+                        </li>
+                    <?php endif; ?>
                     <li>
                         <?php if ($is_create_post_enabled): ?>
                             <a href="CreatePost">

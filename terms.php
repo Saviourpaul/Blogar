@@ -1,5 +1,5 @@
 
-
+<?php $pageTitle = 'Terms of Service'; ?>
 <body class="nk-body">
     <div class="nk-app-root">
         <div class="bg-mask-wraper mt-22 h-800px">
@@ -15,18 +15,18 @@
                             <div class="col-xl-8" data-gsap-in='{"opacity": 0, "y": 50}' data-gsap-delay="3.5">
                                 <div class="nk-entry">
                                     <h5>1. Introduction</h5>
-                                    <p>Welcome to CopyWriter AI! These terms and conditions outline the rules and regulations for the use of our services. By accessing or using our services, you agree to be bound by these terms. If you do not agree with any part of these terms, please do not use our services.</p>
+                                    <p>Welcome to IdeaHub! These terms and conditions outline the rules and regulations for the use of our services. By accessing or using our services, you agree to be bound by these terms. If you do not agree with any part of these terms, please do not use our services.</p>
                                     <h5>2. Use of Services</h5>
                                     <p>You agree to use our services only for lawful purposes and in a way that does not infringe the rights of others. You are responsible for any content you create using our services and must ensure that it complies with all applicable laws and regulations.</p>
                                     <ol>
                                         <li>You must not use the service to generate content that is illegal, defamatory, or violates intellectual property rights.</li>
                                         <li>You must not attempt to reverse engineer, hack, or gain unauthorized access to our service or its infrastructure.</li>
                                         <li>You must not use our service to spam, harass, or abuse other users or third parties.</li>
-                                        <li>You must not resell or redistribute our service without explicit written permission from CopyWriter AI. <ol>
+                                        <li>You must not resell or redistribute our service without explicit written permission from IdeaHub. <ol>
                                                 <li>You must not use the service to generate content that is illegal, defamatory, or violates intellectual property rights.</li>
                                                 <li>You must not attempt to reverse engineer, hack, or gain unauthorized access to our service or its infrastructure.</li>
                                                 <li>You must not use our service to spam, harass, or abuse other users or third parties.</li>
-                                                <li>You must not resell or redistribute our service without explicit written permission from CopyWriter AI.</li>
+                                                <li>You must not resell or redistribute our service without explicit written permission from IdeaHub.</li>
                                                 <li>You are responsible for maintaining the confidentiality of your account credentials and agree not to share them with unauthorized parties.</li>
                                                 <li>You agree to comply with all applicable laws and regulations in your jurisdiction when using our services.</li>
                                             </ol>
@@ -35,7 +35,7 @@
                                         <li>You agree to comply with all applicable laws and regulations in your jurisdiction when using our services.</li>
                                     </ol>
                                     <h5>3. Intellectual Property</h5>
-                                    <p>All content created using CopyWriter AI is owned by you. However, by using our services, you grant us a non-exclusive, royalty-free license to use, reproduce, and distribute your content for the purpose of providing and improving our services.</p>
+                                    <p>All content created using IdeaHub is owned by you. However, by using our services, you grant us a non-exclusive, royalty-free license to use, reproduce, and distribute your content for the purpose of providing and improving our services.</p>
                                     <h5>4. Privacy Policy</h5>
                                     <p>Your privacy is important to us. Please review our Privacy Policy to understand how we collect, use, and protect your information.</p>
                                     <ul>
@@ -51,7 +51,7 @@
                                         <li>You have the right to request access, correction, or deletion of your personal data at any time.</li>
                                     </ul>
                                     <h5>5. Limitation of Liability</h5>
-                                    <p>CopyWriter AI shall not be liable for any damages arising out of or in connection with the use of our services. This includes but is not limited to direct, indirect, incidental, punitive, and consequential damages.</p>
+                                    <p>IdeaHub shall not be liable for any damages arising out of or in connection with the use of our services. This includes but is not limited to direct, indirect, incidental, punitive, and consequential damages.</p>
                                     <h5>6. Changes to Terms</h5>
                                     <p>We reserve the right to modify these terms at any time. Any changes will be effective immediately upon posting on our website. Your continued use of our services after any changes constitutes your acceptance of the new terms.</p>
                                     <h5>7. Contact Us</h5>
@@ -117,8 +117,5 @@
     <div class="nk-cursor js-cursor"></div>
     <!-- JavaScript -->
     <script src="assets/js/appb183.js?v120"></script>
-<script>(function(){function c(){var b=a.contentDocument||a.contentWindow.document;if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'9e993165b97973c1',t:'MTc3NTczNDM2NQ=='};var a=document.createElement('script');a.src='cdn-cgi/challenge-platform/h/b/scripts/jsd/625261456364/maind41d.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script></body>
-
-
-<!-- Mirrored from brightsaas.niotheme.com/shortener-ai-terms by HTTrack Website Copier/3.x [XR&CO'2014], Thu, 09 Apr 2026 11:33:32 GMT -->
+    </body>
 </html>

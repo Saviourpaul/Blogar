@@ -1,6 +1,7 @@
 <?php
 
 require_once __DIR__ . '/helpers.php';
+ensureUserOnboardingSchema($connection);
 
 
 if (!isset($_SESSION['user-id'])) {
@@ -15,7 +16,7 @@ if (!isset($_SESSION['user-id'])) {
 $loggedInId = $_SESSION['user-id'];
 
 $stmt = $connection->prepare("
-    SELECT id, firstname, lastname, email, avatar, is_admin
+    SELECT id, firstname, lastname, email, avatar, is_admin, account_type, profile_role, engagement_stage, preferred_category_ids, onboarding_completed_at
     FROM users
     WHERE id = ?
 ");
@@ -28,6 +29,15 @@ if (!$user) {
     
     session_destroy();
     header("Location: signin");
+    exit();
+}
+
+$requestPath = trim((string) parse_url($_SERVER['REQUEST_URI'] ?? '', PHP_URL_PATH), '/');
+$isOnboardingPage = preg_match('~(^|/)(onboarding|onboarding\.php)$~', $requestPath) === 1;
+$onboardingState = getOnboardingState($user);
+
+if (!isUserOnboardingComplete($user) && !$isOnboardingPage) {
+    header("Location: onboarding");
     exit();
 }
 
@@ -256,6 +266,12 @@ function getRelativeTime($datetime) {
             color: var(--feed-accent);
         }
 
+        .modern-post-chip--role {
+            border-color: rgba(14, 165, 233, 0.16);
+            background: rgba(224, 242, 254, 0.9);
+            color: #0369a1;
+        }
+
         .modern-post-card__title {
             margin: 0 0 0.75rem;
             color: var(--feed-heading);
@@ -442,9 +458,9 @@ function getRelativeTime($datetime) {
             </div>
             <div class="d-flex align-items-center gap-3">
                 <!--Start App Search-->
-                <form class="app-search d-none d-lg-block me-2" action="" method="GET">
+                <form class="app-search me-2" action="post" method="GET">
                     <div class="position-relative">
-                        <input type="text" class="form-control" placeholder="Search...">
+                        <input type="text" name="q" class="form-control" placeholder="Search posts..." value="<?= htmlspecialchars($_GET['q'] ?? '', ENT_QUOTES, 'UTF-8') ?>">
                         <i data-eva="search-outline" class="align-middle"></i>
                     </div>
                 </form>

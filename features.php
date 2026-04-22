@@ -1,14 +1,4 @@
-
-    <meta charset="UTF-8">
-    <meta name="author" content="Softnio">
-    <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
-    <meta name="description" content="Build a stunning landing page for your AI-powered SaaS using the BrightSaaS template, featuring a modern dark-design and glowing light effect.">
-    <!-- Fav Icon  -->
-    <link rel="shortcut icon" href="images/favicon.png">
-    <title>Features - URL Shortener | BrightSaaS - AI Startup and SaaS Software Website Template. </title>
-    <link rel="stylesheet" href="assets/css/appb183.css?v120">
-</head>
-
+<?php $pageTitle = 'Features'; ?>
 <body class="nk-body">
     <div class="nk-app-root">
         <div class="bg-mask-wraper mt-22 h-800px">
@@ -370,7 +360,5 @@
     <div class="nk-cursor js-cursor"></div>
     <!-- JavaScript -->
     <script src="assets/js/appb183.js?v120"></script>
-<script>(function(){function c(){var b=a.contentDocument||a.contentWindow.document;if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'9e99315e1c0e73c1',t:'MTc3NTczNDM2Mw=='};var a=document.createElement('script');a.src='cdn-cgi/challenge-platform/h/b/scripts/jsd/625261456364/maind41d.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script></body>
-
-
+    </body>
 </html>

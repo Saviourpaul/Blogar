@@ -1,5 +1,5 @@
 
-
+<?php $pageTitle = 'Contact'; ?>
 <body class="nk-body">
     <div class="nk-app-root">
         <div class="bg-mask-wraper mt-22 h-800px">
@@ -121,7 +121,7 @@
                                                 </div>
                                                 <div class="card-content pt-1">
                                                     <h6 class="fs-8 fw-semibold mb-1">Email Address</h6>
-                                                    <p class="fs-8 mb-0"><a href="cdn-cgi/l/email-protection.html" class="__cf_email__" data-cfemail="53202623233c212713243631203a27367d303c3e">[email&#160;protected]</a></p>
+                                                    <p class="fs-8 mb-0">[email protected]</p>
                                                 </div>
                                             </div>
                                         </div>
@@ -250,8 +250,6 @@
     </div>
     <div class="nk-cursor js-cursor"></div>
     <!-- JavaScript -->
-    <script data-cfasync="false" src="cdn-cgi/scripts/5c5dd728/cloudflare-static/email-decode.min.js"></script><script src="assets/js/appb183.js?v120"></script>
-<script>(function(){function c(){var b=a.contentDocument||a.contentWindow.document;if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'9e99317ead1a73c1',t:'MTc3NTczNDM2OQ=='};var a=document.createElement('script');a.src='cdn-cgi/challenge-platform/h/b/scripts/jsd/625261456364/maind41d.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script></body>
-
-
+    <script src="assets/js/appb183.js?v120"></script>
+    </body>
 </html>
